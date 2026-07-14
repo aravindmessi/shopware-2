@@ -49,6 +49,7 @@ function getToken() {
 
 // Create new access token and save in local db
 function generateAccessToken() {
+  console.log("[api] generateAccessToken entered");
   return new Promise((resolve, reject) => {
     let headers = {
       "Content-Type": "application/json",
@@ -62,13 +63,17 @@ function generateAccessToken() {
       client_secret: apiKey.credentials.iparams.client_secret,
     };
 
-    options = {
+    const options = {
       method: "POST",
       url: authUrl,
       headers: headers,
       json: true,
       body,
     };
+    console.log("[api] generateAccessToken request", {
+      url: authUrl,
+      client_id: body.client_id,
+    });
 
     request(options, async function (err, res, body) {
       if (!err && (res.statusCode == 200 || res.statusCode == 201)) {
@@ -85,8 +90,6 @@ function generateAccessToken() {
 // Get workitem
 function getWorkitem() {
   console.log("getWorkitem() called");
-
-  
 
   return new Promise(async (resolve, reject) => {
     try {
@@ -151,6 +154,7 @@ function getWorkitem() {
 }
 // Get order
 function getOrderByOrderID() {
+  console.log("[api] getOrderByOrderID entered", apiKey.credentials);
   return new Promise(async (resolve, reject) => {
     let token = await getToken();
     console.log("Token received:", token);
@@ -161,11 +165,12 @@ function getOrderByOrderID() {
     };
     let url = `https://${apiKey.credentials.iparams.SWdomain}/api/order/${apiKey.credentials.orderID}`;
 
-    options = {
+    const options = {
       method: "GET",
       url,
       headers,
     };
+    console.log(`[api] request ${url}`);
     console.log("Request Options:", options);
 
     request(options, function (err, res, body) {
@@ -180,6 +185,7 @@ function getOrderByOrderID() {
 
 // Get Order Number Items
 function getOrderNumberItems() {
+  console.log("[api] getOrderNumberItems entered", apiKey.credentials);
   return new Promise(async (resolve, reject) => {
     let token = await getToken();
 
@@ -217,14 +223,14 @@ function getOrderNumberItems() {
       ],
     };
 
-    options = {
+    const options = {
       method: "POST",
       url,
       headers,
       json: true,
       body,
     };
-
+    console.log(`[api] request ${url}`);
     request(options, function (err, res, body) {
       if (!err && (res.statusCode == 200 || res.statusCode == 201)) {
         resolve(body);
@@ -237,6 +243,7 @@ function getOrderNumberItems() {
 
 // Get Line Items
 function getLineItems() {
+  console.log("[api] getLineItems entered", apiKey.credentials);
   return new Promise(async (resolve, reject) => {
     let token = await getToken();
 
@@ -247,7 +254,7 @@ function getLineItems() {
     };
     let url = `https://${apiKey.credentials.iparams.SWdomain}/api/order/${apiKey.credentials.orderId}/line-items`;
 
-    options = {
+    const options = {
       method: "GET",
       url,
       headers,
@@ -265,6 +272,7 @@ function getLineItems() {
 
 // Get Shipping Address
 function getShippingAddress() {
+  console.log("[api] getShippingAddress entered", apiKey.credentials);
   return new Promise(async (resolve, reject) => {
     let token = await getToken();
 
@@ -275,12 +283,12 @@ function getShippingAddress() {
     };
     let url = `https://${apiKey.credentials.iparams.SWdomain}/api/order/${apiKey.credentials.orderId}/deliveries`;
 
-    options = {
+    const options = {
       method: "GET",
       url,
       headers,
     };
-
+    console.log(`[api] request ${url}`);
     request(options, function (err, res, body) {
       if (!err && (res.statusCode == 200 || res.statusCode == 201)) {
         resolve(body);
@@ -292,6 +300,7 @@ function getShippingAddress() {
 }
 
 function currencyFetchDetails() {
+  console.log("[api] currencyFetchDetails entered", apiKey.credentials);
   return new Promise(async (resolve, reject) => {
     let token = await getToken();
 
@@ -302,12 +311,12 @@ function currencyFetchDetails() {
     };
     let url = `https://${apiKey.credentials.iparams.SWdomain}/api/order/${apiKey.credentials.orderId}/currency`;
 
-    options = {
+    const options = {
       method: "GET",
       url,
       headers,
     };
-
+    console.log(`[api] request ${url}`);
     request(options, function (err, res, body) {
       if (!err && (res.statusCode == 200 || res.statusCode == 201)) {
         resolve(body);
@@ -319,6 +328,7 @@ function currencyFetchDetails() {
 }
 
 function paymentFetchDetails() {
+  console.log("[api] paymentFetchDetails entered", apiKey.credentials);
   return new Promise(async (resolve, reject) => {
     let token = await getToken();
 
@@ -329,12 +339,12 @@ function paymentFetchDetails() {
     };
     let url = `https://${apiKey.credentials.iparams.SWdomain}/api/order/${apiKey.credentials.orderId}/transactions`;
 
-    options = {
+    const options = {
       method: "GET",
       url,
       headers,
     };
-
+    console.log(`[api] request ${url}`);
     request(options, function (err, res, body) {
       if (!err && (res.statusCode == 200 || res.statusCode == 201)) {
         resolve(body);

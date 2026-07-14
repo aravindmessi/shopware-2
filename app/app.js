@@ -179,64 +179,84 @@ function oauthConfig() {
   );
 }
 
-function getWorkitem() {
-  return new Promise(async (resolve, reject) => {
+function parseInvokeResponse(response) {
+  if (typeof response === "string") {
     try {
-      const token = await getToken();
-
-      const headers = {
-        Authorization: token,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      };
-
-      const url = `https://${apiKey.credentials.iparams.SWdomain}/api/search/order-customer`;
-
-      const body = {
-        limit: 10,
-        filter: [
-          {
-            type: "equals",
-            field: "email",
-            value: apiKey.credentials.sender_email,
-          },
-        ],
-        sort: [
-          {
-            field: "orderId",
-            order: "DESC",
-          },
-        ],
-      };
-
-      request(
-        {
-          method: "POST",
-          url,
-          headers,
-          json: true,
-          body,
-        },
-        function (err, res, response) {
-          console.log("Request Error:", err);
-          console.log("Status:", res && res.statusCode);
-          console.log("Response:", response);
-
-          if (
-            !err &&
-            res &&
-            (res.statusCode === 200 || res.statusCode === 201)
-          ) {
-            resolve(response);
-          } else {
-            reject(response || err);
-          }
-        },
-      );
-    } catch (err) {
-      reject(err);
+      return JSON.parse(response);
+    } catch (error) {
+      console.log("[frontend] parseInvokeResponse failed", error, response);
+      return response;
     }
+  }
+
+  return response;
+}
+
+function getTicketSenderEmail(ticketData) {
+  const ticket = ticketData && ticketData.ticket ? ticketData.ticket : {};
+  return (
+    ticket.sender_email ||
+    ticket.requester_email ||
+    (ticket.requester && ticket.requester.email) ||
+    ticket.email
+  );
+}
+
+function getWorkitem(ticketData) {
+  console.log("[frontend] getWorkitem entered", ticketData);
+
+  const senderEmail = getTicketSenderEmail(ticketData);
+  console.log("[frontend] getWorkitem sender_email", senderEmail);
+
+  if (!senderEmail) {
+    document.getElementById("show-spin").style.display = "none";
+    document.getElementById("user-no").style.display = "block";
+    console.log("[frontend] getWorkitem stopped: missing sender_email");
+    return Promise.reject(new Error("Ticket sender email is unavailable"));
+  }
+
+  console.log("[frontend] invoking getWorkitemInvoke", {
+    sender_email: senderEmail,
   });
+  return client.request
+    .invoke("getWorkitemInvoke", { sender_email: senderEmail })
+    .then(function (data) {
+      console.log("[frontend] getWorkitemInvoke response", data);
+      console.log("Raw invoke response:", data);
+      console.log("Raw data.response:", data.response);
+
+      const response = parseInvokeResponse(data.response);
+
+      console.log("Parsed response:", response);
+      console.log("Parsed response.data:", response?.data);
+      const orders =
+        response && Array.isArray(response.data) ? response.data : [];
+      console.log("[frontend] getWorkitem parsed orders", orders);
+
+      if (orders.length > 0) {
+        console.log("[frontend] next function: bindOrderInDropdown");
+        bindOrderInDropdown(orders);
+      } else {
+        document.getElementById("show-spin").style.display = "none";
+        document.getElementById("user-no").style.display = "block";
+        console.log(
+          "[frontend] no Shopware orders found for sender_email",
+          senderEmail,
+        );
+      }
+
+      return response;
+    })
+    .catch(function (err) {
+      document.getElementById("show-spin").style.display = "none";
+      console.log("[frontend] getWorkitem failed", err);
+      client.interface.trigger("showNotify", {
+        type: "danger",
+        title: "Error",
+        message: err.message ? err.message : "Unable to fetch Shopware orders",
+      });
+      throw err;
+    });
 }
 
 // function getOrder(res1) {
@@ -276,17 +296,22 @@ function getorderNumberItems(value) {
     document.getElementById("show-order-spin").style.display = "block";
     document.getElementById("stock-yes").style.display = "none";
 
-    client.request.invoke("getOrderNumberItemsInvoke", { orderNo: value }).then(
-      function (data) {
-        // data is a json object with requestID and response.
-        // data.response gives the output sent as the second argument in renderData.
-        dispalyLineItem(data.response);
-      },
-      function (err) {
-        // err is a json object with requestID, status and message.
-        reject(err.message);
-      },
-    );
+    return client.request
+      .invoke("getOrderNumberItemsInvoke", { orderNo: value })
+      .then(
+        function (data) {
+          // data is a json object with requestID and response.
+          // data.response gives the output sent as the second argument in renderData.
+          console.log("[frontend] getOrderNumberItemsInvoke response", data);
+          dispalyLineItem(parseInvokeResponse(data.response));
+        },
+        function (err) {
+          // err is a json object with requestID, status and message.
+          console.log("[frontend] getOrderNumberItemsInvoke failed", err);
+          document.getElementById("show-order-spin").style.display = "none";
+          throw err;
+        },
+      );
   } else {
     document.getElementById("show-spin").style.display = "none";
     document.getElementById("order-yes").style.display = "none";
@@ -295,6 +320,7 @@ function getorderNumberItems(value) {
   }
 }
 function getlineItems(resp) {
+  console.log("[frontend] getlineItems entered", resp);
   return new Promise(function (resolve, reject) {
     client.request
       .invoke("getLineItemsInvoke", { orderId: resp.data[0].id })
@@ -302,7 +328,8 @@ function getlineItems(resp) {
         function (data) {
           // data is a json object with requestID and response.
           // data.response gives the output sent as the second argument in renderData.
-          let respon = JSON.parse(data.response);
+          console.log("[frontend] getLineItemsInvoke response", data);
+          let respon = parseInvokeResponse(data.response);
           if (respon !== "") {
             resolve(respon);
           } else {
@@ -318,6 +345,7 @@ function getlineItems(resp) {
 }
 
 function dispalyLineItem(resp) {
+  console.log("[frontend] dispalyLineItem entered", resp);
   return new Promise(function (resolve, reject) {
     getlineItems(resp)
       .then((respon) => {
@@ -372,7 +400,7 @@ function waitingForRes() {
   document.getElementById("invalid-cred").style.display = "none";
 }
 function bindOrderInDropdown(array) {
-  console.log("bindOrderInDropdown array:", array);
+  console.log("[frontend] bindOrderInDropdown entered", array);
   console.log("array length:", array.length);
 
   client.instance.resize({ height: "300px" });
@@ -383,7 +411,7 @@ function bindOrderInDropdown(array) {
   }
 
   const create_o = document.createElement("fw-select");
-  o_option = document.createElement("fw-select-option");
+  let o_option = document.createElement("fw-select-option");
   create_o.setAttribute("id", "order_list_options");
 
   for (const i = 0; i < array.length; i++) {
@@ -398,6 +426,18 @@ function bindOrderInDropdown(array) {
     // console.log(o_option);
     create_o.appendChild(o_option);
   }
+  if (array.length === 0) {
+    document.getElementById("show-spin").style.display = "none";
+    document.getElementById("user-no").style.display = "block";
+    console.log("[frontend] bindOrderInDropdown stopped: no orders");
+    return;
+  }
+
+  console.log(
+    "[frontend] next function: getorderNumberItems",
+    array[0].orderNumber,
+  );
+
   getorderNumberItems(array[0].orderNumber);
 
   if (array.length != 0) {
@@ -411,7 +451,6 @@ function bindOrderInDropdown(array) {
   }
 }
 
-bindOrderInDropdown([]);
 //************************card details function showing**************************
 function getlineItemsInCard(resp, respon) {
   // document.getElementById('order-yes').style.display = 'none';
@@ -610,6 +649,7 @@ function orderItemsCard(resp, respon) {
 // fetch payment stauts
 
 function paymentFetchDetails(resp) {
+  console.log("[frontend] paymentFetchDetails entered", resp);
   return new Promise(function (resolve, reject) {
     client.request
       .invoke("paymentFetchDetailsInvoke", { orderId: resp.data[0].id })
@@ -634,6 +674,7 @@ function paymentFetchDetails(resp) {
 
 //currency URL fetch
 function currencyFetchDetails(resp) {
+  console.log("[frontend] currencyFetchDetails entered", resp);
   return new Promise(function (resolve, reject) {
     client.request
       .invoke("currencyFetchDetailsInvoke", { orderId: resp.data[0].id })
@@ -685,6 +726,7 @@ function elementCreate(...el) {
 }
 
 function getShippingAddress(resp) {
+  console.log("[frontend] getShippingAddress entered", resp);
   return new Promise(function (resolve, reject) {
     client.request
       .invoke("getShippingAddressInvoke", { orderId: resp.data[0].id })

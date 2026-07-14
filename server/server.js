@@ -10,6 +10,19 @@ const {
   apiKey,
 } = require("./lib/api");
 
+/*function logInvokeEntry(name, args) {
+  console.log(`[backend] ${name} entered`, JSON.stringify(args || {}));
+}
+
+function logInvokeSuccess(name, response) {
+  console.log(`[backend] ${name} response`, typeof response === "string" ? response : JSON.stringify(response));
+}
+
+function logInvokeError(name, error) {
+  console.log(`[backend] ${name} failed`, error);
+}*/
+
+
 exports = {
   generateAccessTokenInvoke: async function (args) {
     apiKey.arguments = args;
