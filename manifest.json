@@ -1,0 +1,45 @@
+{
+  "platform-version": "3.0",
+  "dependencies": {
+    "request": "2.88.2"
+  },
+  "modules": {
+    "common": {
+      "requests": {
+        "generateAccessToken": {},
+        "getWorkitem": {},
+        "getLineItems": {},
+        "getOrderByOrderID": {},
+        "getOrderNumberItems": {},
+        "currencyFetchDetails": {},
+        "paymentFetchDetails": {},
+        "getShippingAddress": {}
+      },
+      "functions": {
+        "generateAccessTokenInvoke": {},
+        "getWorkitemInvoke": {},
+        "getLineItemsInvoke": {},
+        "getOrderByOrderIDInvoke": {},
+        "getOrderNumberItemsInvoke": {},
+        "currencyFetchDetailsInvoke": {},
+        "paymentFetchDetailsInvoke": {},
+        "getShippingAddressInvoke": {}
+      }
+    },
+    "support_ticket": {
+      "location": {
+        "ticket_sidebar": {
+          "url": "template.html",
+          "icon": "icon.svg"
+        }
+      }
+    }
+  },
+  "engines": {
+    "node": "24.11.0",
+    "fdk": "10.1.7"
+  },
+  "scripts": {
+    "fdk-unit-test": "vitest run --coverage"
+  }
+}

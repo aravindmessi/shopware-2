@@ -1,0 +1,120 @@
+{
+  "generateAccessToken": {
+    "schema": {
+      "protocol": "https",
+      "method": "POST",
+      "host": "<%= context.store_name %>",
+      "path": "/api/oauth/token",
+      "headers": {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      }
+    }
+  },
+  "generateAccessTokenInvoke": {
+    "schema": {
+      "protocol": "https",
+      "method": "GET",
+      "host": "<%= context.store_name %>",
+      "path": "/api/oauth/token",
+      "headers": {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      }
+    }
+  },
+
+  "getWorkitem": {
+    "schema": {
+      "protocol": "https",
+      "method": "POST",
+      "host": "<%= context.store_name %>",
+      "path": "/api/search/order-customer",
+      "headers": {
+        "Authorization": "<%= context.authorization %>",
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      }
+    }
+  },
+  "getLineItems": {
+    "schema": {
+      "method": "GET",
+      "host": "<%= context.domain%>",
+      "path": "/api/v2/roles",
+      "headers": {
+        "Authorization": "Bearer <%= encode(context.api_key) %>",
+        "Content-Type": "application/json"
+      }
+    }
+  },
+  "getOrderByOrderID": {
+    "schema": {
+      "method": "GET",
+      "host": "<%= iparam.domain%>",
+      "path": "/api/v2/admin/ticket_fields",
+      "headers": {
+        "Authorization": "Bearer <%= encode(iparam.api_key) %>",
+        "Content-Type": "application/json"
+      }
+    }
+  },
+  "getOrderNumberItems": {
+    "schema": {
+      "method": "POST",
+      "host": "<%= iparam.domain%>",
+      "path": "/api/v2/admin/ticket_fields",
+      "headers": {
+        "Authorization": "Bearer <%= encode(iparam.api_key) %>",
+        "Content-Type": "application/json"
+      }
+    }
+  },
+
+  "currencyFetchDetails": {
+    "schema": {
+      "method": "GET",
+      "host": "<%= iparam.domain %>",
+      "path": "/api/v2/tickets/<%= context.ticket_id %>/conversations?page=<%= context.page %>",
+      "headers": {
+        "Authorization": "Basic <%= encode(iparam.api_key) %>",
+        "Content-Type": "application/json"
+      }
+    }
+  },
+  "paymentFetchDetails": {
+    "schema": {
+      "method": "GET",
+      "host": "<%= iparam.domain %>",
+      "path": "/api/v2/tickets/<%= context.ticket_id %>",
+      "headers": {
+        "Authorization": "Basic <%= encode(iparam.api_key) %>",
+        "Content-Type": "application/json"
+      }
+    }
+  },
+  "getShippingAddress": {
+    "schema": {
+      "protocol": "https",
+      "method": "GET",
+      "host": "<%= context.domain %>",
+      "path": "/api/v2/tickets/<%= context.ticket_id %>",
+      "headers": {
+        "Authorization": "Basic <%= context.api_key %>",
+        "Content-Type": "application/json"
+      }
+    }
+  },
+
+  "getAgent": {
+    "schema": {
+      "method": "GET",
+      "host": "<%= iparam.domain %>",
+      "path": "/api/v2/agents/me",
+      "headers": {
+        "Authorization": "Bearer <%= encode(iparam.api_key) %>",
+        "Content-Type": "application/json"
+      }
+    }
+  }
+}

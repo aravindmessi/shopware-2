@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <script src="https://static.freshdev.io/fdk/2.0/assets/fresh_client.js"></script>
+ <script
+  type="module"
+  src="https://cdn.jsdelivr.net/npm/@freshworks/crayons@2.13.4/dist/crayons/crayons.esm.js">
+</script>
+
+<script
+  nomodule
+  src="https://cdn.jsdelivr.net/npm/@freshworks/crayons@2.13.4/dist/crayons/crayons.js">
+</script>
+
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/@freshworks/crayons@2.13.4/css/crayons-min.css">
+  <script src="app_modal.js"></script>
+  <style>
+  body {font-family: Arial, Helvetica, sans-serif;}
+
+  /* Full-width input fields */
+  input[type=text], input[type=password] {
+    width: 100%;
+    padding: 12px 20px;
+    margin: 8px 0;
+    display: inline-block;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+  }
+
+  /* Set a style for all buttons */
+  button {
+    background-color: #4CAF50;
+    color: white;
+    padding: 14px 20px;
+    margin: 8px 0;
+    border: none;
+    cursor: pointer;
+    width: 100%;
+  }
+
+  button:hover {
+    opacity: 0.8;
+  }
+
+  /* Extra styles for the cancel button */
+  .cancelbtn {
+    width: auto;
+    padding: 10px 18px;
+    background-color: #999999;
+  }
+
+  /* Center the image and position the close button */
+  .imgcontainer {
+    text-align: center;
+    margin: 24px 0 12px 0;
+    position: relative;
+  }
+
+
+
+  .container {
+    padding: 16px;
+  }
+
+  span.psw {
+    float: right;
+    padding-top: 16px;
+  }
+
+  /* The Modal (background) */
+  .modal {
+    /* display: none; Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgb(0,0,0); /* Fallback color */
+    background-color: rgba(0,0,0,0); /* Black w/ opacity */
+    padding-top: 60px;
+  }
+
+  /* Modal Content/Box */
+  .modal-content {
+    background-color: #fefefe;
+    margin: 5% auto 15% auto; /* 5% from the top, 15% from the bottom and centered */
+    border: 1px solid #888;
+    width: 80%; /* Could be more or less, depending on screen size */
+  }
+
+  /* The Close Button (x) */
+  .close {
+    position: absolute;
+    right: 25px;
+    top: 0;
+    color: #000;
+    font-size: 35px;
+    font-weight: bold;
+  }
+
+  .close:hover,
+  .close:focus {
+    color: red;
+    cursor: pointer;
+  }
+
+  /* Add Zoom Animation */
+  .animate {
+    -webkit-animation: animatezoom 0.6s;
+    animation: animatezoom 0.6s
+  }
+
+  @-webkit-keyframes animatezoom {
+    from {-webkit-transform: scale(0)}
+    to {-webkit-transform: scale(1)}
+  }
+
+  @keyframes animatezoom {
+    from {transform: scale(0)}
+    to {transform: scale(1)}
+  }
+
+  /* Change styles for span and cancel button on extra small screens */
+  @media screen and (max-width: 300px) {
+    span.psw {
+      display: block;
+      float: none;
+    }
+    .cancelbtn {
+      width: 100%;
+    }
+  }
+</style>
+</head>
+<body>
+
+
+
+  <div id="id01" class="modal" style="padding-top: 0px;">
+
+    <form class="modal-content animate" action="/action_page.php" method="post">
+      <div class="imgcontainer">
+
+      </div>
+
+      <div class="container" style="padding-top: 0px;">
+
+        <div id="Refund_Reason_div">
+          <!--<fw-select label="Refund and Reason" id="Refund_Reason" required="true" value="1" placeholder="Your choice" state-text="Reason for refund">
+          <fw-select-option value="1"></fw-select-option>
+          <fw-select-option value="Changed Mind">Changed Mind</fw-select-option>
+          <fw-select-option value="Expectation Not Meet">Expectation Not Meet</fw-select-option>
+          <fw-select-option value="Order Mistakes">Order Mistakes</fw-select-option>
+          <fw-select-option value="Ordered Incorrectly">Ordered Incorrectly</fw-select-option>
+        </fw-select>-->
+
+      </div>
+
+      <div id="Refund_Outcome_div">
+        <!--<fw-select label="Refund and Outcome" id="Refund_Outcome" required="true" value="1" placeholder="Your choice" state-text="Refund and Outcome">
+        <fw-select-option value="1"></fw-select-option>
+        <fw-select-option value="Awaiting Outcome">Awaiting Outcome</fw-select-option>
+        <fw-select-option value="Return to stock issue credit">Return to stock issue credit</fw-select-option>
+        <fw-select-option value="Write off issue credit or replacement">Write off issue credit or replacement</fw-select-option>
+        <fw-select-option value="Issue Credit or Replacement">Issue Credit or Replacement</fw-select-option>
+        <fw-select-option value="Return to customer">Return to customer</fw-select-option>
+      </fw-select>-->
+
+    </div>
+    <!--<div>
+    <table>
+    <tr>
+    <td><div id="Refund_Reason_div"></td>
+    <td><div id="Refund_Outcome_div"></td>
+  </tr>
+</table>
+</div>
+<div>-->
+<!-- <div id="valid-desc">
+  <h6 style="color:red;">*Please enter valid value in description field</h6>
+</div> -->
+<div>
+  <fw-input
+  label="Staff Name"
+  placeholder="Enter Staff Name"
+  type="text"
+  state-text="Please Enter exact staff user name format present in Neto"
+  required id="Staff_Name_modal"
+  clear-input>
+</fw-input>
+</div>
+<div>
+  <table>
+    <tr>
+      <td><fw-input
+        label="Coupon Discount"
+        type="text" disabled
+        required id="dis_CouponDiscount">
+      </fw-input></td>
+      <td><fw-input
+        label="Percent Discount"
+        type="text" disabled
+        required id="PercentDiscount">
+      </fw-input></td>
+    </tr>
+  </table>
+</div>
+
+<div>
+  <fw-input
+  label="Unit Price"
+  type="text" disabled
+  required id="dis_UnitPrice">
+</fw-input>
+</div>
+<div>
+  <!-- <label for="psw"><b>Assign Crdits</b></label>PercentDiscount  -->
+  <fw-input
+  label="Return Quantity"
+  placeholder="Enter Return Quantity"
+  type="number"
+  required id="Return_Quantity" value=""
+  clear-input>
+</fw-input>
+</div>
+
+<div>
+  <!-- <label for="psw"><b>Assign Crdits</b></label>  -->
+  <fw-input
+  label="Assign Credits"
+  placeholder="Enter Assign Credits"
+  state-text="Price Paid =(Qty × unitprice) - (((Qty × unitprice)- coupon) × discount/100)" type="number"
+  required id="Assign_Credits" value=""
+  clear-input>
+</fw-input>
+</div>
+<input type="hidden" id="hidden_ProductName" >
+<input type="hidden" id="hidden_SKU" >
+<input type="hidden" id="hidden_OrderID" >
+<input type="hidden" id="hidden_Quantity" >
+<input type="hidden" id="hidden_UnitPrice" >
+<input type="hidden" id="hidden_TaxCode" >
+<input type="hidden" id="hidden_WarehouseID" >
+<input type="hidden" id="hidden_CouponDiscount" >
+<input type="hidden" id="hidden_PercentDiscount" >
+<input type="hidden" id="hidden_mode" >
+<input type="hidden" id="hidden_GrandTotal" >
+<input type="hidden" id="hidden_response" >
+</div>
+<h6 style="color:red;" id="valid-desc">*Please enter valid value</h6>
+<div class="container" style="background-color:#f1f1f1">
+  <!-- <button type="button" onclick="document.getElementById('id01').style.display='none'" class="cancelbtn">Submit</button>-->
+  <fw-button onclick="refund_modal_submit()"  color="secondary"> Submit </fw-button>
+
+</div>
+</form>
+</div>
+
+<script>
+
+</script>
+
+</body>
+</html>

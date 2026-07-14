@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <link rel="stylesheet" type="text/css" href="https://static.freshdev.io/fdk/2.0/assets/freshdesk.css">
+  <script src="{{{appclient}}}"></script>
+
+ <script
+  type="module"
+  src="https://cdn.jsdelivr.net/npm/@freshworks/crayons@2.13.4/dist/crayons/crayons.esm.js">
+</script>
+
+<script
+  nomodule
+  src="https://cdn.jsdelivr.net/npm/@freshworks/crayons@2.13.4/dist/crayons/crayons.js">
+</script>
+
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/@freshworks/crayons@2.13.4/css/crayons-min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.0/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/js/select2.min.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/css/select2.min.css" rel="stylesheet" />
+  <!-- <link rel="stylesheet" type="text/css" href="./assets/iparams.css">
+  <script src="./assets/iparams.js"></script> -->
+  <style>
+    .dropdown {
+      width: 10%;
+      color: black;
+      border: 5;
+    }
+
+    #error_div {
+      color: red;
+    }
+
+    .select2-container {
+      width: 70%;
+    }
+
+    .select2-container--default {
+      width: 80% !important;
+    }
+
+    .select2-locked {
+      padding: 0px !important;
+    }
+
+    .app-config {
+      margin: 10px 20px;
+    }
+
+
+    /* model css */
+    /* The Modal (background) */
+    .modal {
+      display: none;
+      /* Hidden by default */
+      position: fixed;
+      /* Stay in place */
+      z-index: 1;
+      /* Sit on top */
+      padding-top: 100px;
+      /* Location of the box */
+      left: 0;
+      top: 0;
+      width: 100%;
+      /* Full width */
+      height: 100%;
+      /* Full height */
+      overflow: auto;
+      /* Enable scroll if needed */
+      background-color: rgb(0, 0, 0);
+      /* Fallback color */
+      background-color: rgba(0, 0, 0, 0.4);
+      /* Black w/ opacity */
+    }
+
+    /* Modal Content */
+    .modal-content {
+      background-color: #fefefe;
+      margin: auto;
+      padding: 20px;
+      border: 1px solid #888;
+      width: 50%;
+    }
+
+    /* The Close Button */
+    .editclose {
+      color: #aaaaaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+    }
+
+    .editclose:hover,
+    .editclose:focus {
+      color: #000;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .createclose {
+      color: #aaaaaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+    }
+
+    .createclose:hover,
+    .createclose:focus {
+      color: #000;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .table-action-icon {
+      padding-right: 5px;
+    }
+
+    .table-header-but {
+      padding: 5px;
+    }
+
+    .row-div {
+      /* margin-right: 20px; */
+      display: inline-block;
+      max-width: 20%;
+      margin-right: 10px;
+    }
+
+    .table-bottom {
+      width: 100%;
+      text-align: center;
+    }
+
+
+
+    .panel {
+      background-color: #f0f1f5;
+      padding: 35px 25px;
+    }
+
+    .panel-box {
+      background-color: #e9ebf0;
+      /* margin-bottom: 10px; */
+      padding: 10px 15px;
+      border: 1px lightgrey solid;
+    }
+
+    .i-mt-12 {
+      margin-top: 12px;
+    }
+
+    .i-pt-12 {
+      padding-top: 12px;
+    }
+
+    .app-img {
+      width: 60px;
+      padding-right: 15px;
+    }
+
+    .disp-flex {
+      display: inline-flex;
+    }
+
+    .web-store {
+      padding: 5px;
+    }
+
+    .role-padd {
+      margin-left: 12px;
+      margin-right: 12px;
+      margin-top: 12px;
+    }
+
+    #pop-error {
+      display: none;
+    }
+
+    #load-spinn-mod {
+      display: none;
+    }
+  </style>
+
+   <script type="text/javascript">
+    var properties = { order_p: [], item_p: [] };
+    var token;
+    var client;
+
+    var orderProperties = [
+      "customerNumber",
+      "email",
+      "firstName",
+      "lastName",
+      "orderNumber",
+      "orderDate",
+      "autoIncrement",
+      "billingAddress",
+      "amountNet",
+      "amountTotal",
+      "campaignCode",
+      "affiliateCode",
+      "currencyFactor",
+      "salesChannel",
+      "shippingTotal",
+      "taxStatus",
+      "deepLinkCode"
+    ];
+    var itemProperties = [
+      "shippingMethod",
+      "shippingDateLatest",
+      "shippingDateEarliest",
+      "paymentMethod",
+      "position",
+      "cover",
+      "good",
+      "removable",
+      "stackable",
+    ];
+
+
+    //getConfig method
+    function getConfigs(configs) {
+      setTimeout(() => {
+        let SW_domain = document.getElementById('shop-name');
+        let SW_client = document.getElementById('shop-client');
+        let client_secret = document.getElementById('shop-cilentid');
+       
+        if (configs.SWdomain) SW_domain.value = configs.SWdomain;
+        if (configs.client_id) SW_client.value = configs.client_id;
+        if (configs.client_secret) client_secret.value = configs.client_secret;
+        
+        SWdomain = SW_domain.value;
+        client_id = SW_client.value;
+        client_secret = client_secret.value;
+      }, 100)
+      if (configs.properties) {
+        properties.order_p = configs.properties.order_p ? configs.properties.order_p : [];
+        properties.item_p = configs.properties.item_p ? configs.properties.item_p : [];
+
+      };
+
+    }
+    //end of getconfig method
+
+    function validate() {
+      let isValid = true;
+
+      let validTokenButt = document.getElementById('click-access-token');
+      let validTokenErrProp = document.getElementById('click-access-token-app-tab');
+      let SWdomain = document.getElementById('shop-name');
+      let SW_client = document.getElementById('shop-client');
+      let client_secret = document.getElementById('shop-cilentid');
+
+
+      if (SWdomain.value && SWdomain.value.trim() != '') {
+        valid = true;
+        SWdomain.setAttribute("state", "normal");
+      } else {
+        isValid = false;
+        SWdomain.setAttribute("state", "error");
+        console.log("invalid");
+      }
+
+      if (SW_client.value && SW_client.value.trim() != '') {
+        valid = true;
+        SW_client.setAttribute("state", "normal");
+      } else {
+        isValid = false;
+        SW_client.setAttribute("state", "error");
+        console.log("invalid");
+      }
+
+      if (client_secret.value && client_secret.value.trim() != '') {
+        valid = true;
+        client_secret.setAttribute("state", "normal");
+      } else {
+        isValid = false;
+        client_secret.setAttribute("state", "error");
+        console.log("invalid");
+      }
+
+      if(!token){
+        isValid = false;
+        validTokenButt.style.color='red';
+        validTokenErrProp.style.color='red';
+        validTokenButt.innerHTML = 'Please validate the App. Click on Validate Account button to validate the app.';
+        validTokenErrProp.innerHTML = 'Please validate the App. Click on Validate Account button in App tab to validate the app.'
+      }
+
+      return isValid;
+    }
+
+    //post config
+    function postConfigs() {
+
+      var stores = [];
+
+      let params = {
+        __meta: {
+          secure: ["client_id","client_secret"]
+        },
+        properties,
+        SWdomain: document.getElementById('shop-name').value,
+        client_id: document.getElementById('shop-client').value,
+        client_secret: document.getElementById('shop-cilentid').value
+      };
+
+      return params;
+    }
+
+    setTimeout(() => {
+      validateInputField();
+    }, 1000);
+
+    function validateInputField() {
+     
+      let SWdomain = document.getElementById('shop-name');
+      let SW_client = document.getElementById('shop-client');
+      let client_secret = document.getElementById('shop-cilentid');
+      let errorBind = document.getElementById('invalid-cred-i');
+
+      SWdomain.addEventListener("input", (data) => {
+        // console.log(data);
+        token = null;
+        errorBind.innerHTML = '';
+        if (SWdomain.value && SWdomain.value.trim() != '') {
+          SWdomain.setAttribute("state", "normal");
+        } else {
+          SWdomain.setAttribute("state", "error");
+        }
+      });
+
+      SW_client.addEventListener("input", (data) => {
+        // console.log(data);
+        token = null;
+        errorBind.innerHTML = '';
+        if (SW_client.value && SW_client.value.trim() != '') {
+          SW_client.setAttribute("state", "normal");
+        } else {
+          SW_client.setAttribute("state", "error");
+        }
+      });
+
+      client_secret.addEventListener("input", (data) => {
+        // console.log(data);
+        token = null;
+        errorBind.innerHTML = '';
+        if (client_secret.value && client_secret.value.trim() != '') {
+          client_secret.setAttribute("state", "normal");
+        } else {
+          client_secret.setAttribute("state", "error");
+        }
+      });
+    }
+
+    function validateStore() {
+let store_name = document.getElementById('shop-name').value;
+      let cI = document.getElementById('shop-client').value;
+      let cS = document.getElementById('shop-cilentid').value;
+      let msg;
+      let validTokenButt = document.getElementById('click-access-token');
+      let validTokenErrProp = document.getElementById('click-access-token-app-tab');
+      let spinnForTok = document.getElementById('spinner-token');
+      spinnForTok.style.display = 'block';
+      validTokenButt.innerHTML = '';
+      validTokenErrProp.innerHTML = '';
+      let headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      }
+      let authUrl = `https://${store_name}/api/oauth/token`;
+      console.log("authurl",authUrl);
+      
+      let body = {
+        "grant_type": "client_credentials",
+        "client_id": cI,
+        "client_secret": cS
+      }
+
+      var reqData = { headers, body: JSON.stringify(body) };
+       
+      return new Promise(function (resolve, reject) {
+        console.log("client",client);
+        console.log("reqeeeeeeee",client.request);
+        
+        console.log("authUrl:", authUrl);
+        console.log("reqData:", reqData);
+        console.log("client:", client);
+        console.log("keyss",Object.keys(client.request));
+        console.log("payload",JSON.stringify(body));
+        console.log("store_name", store_name);
+        console.log("client_id", cI);
+        console.log("client_secret", cS);
+        
+      client.request.invokeTemplate("generateAccessToken",{
+      context: {
+    store_name: store_name
+  },
+  body: JSON.stringify(body)
+      })  
+          .then(
+          function (data) {
+            spinnForTok.style.display = 'none';
+            console.log("validateData========",data);
+            
+            var response = JSON.parse(data.response);
+            if (data.status == 200) {
+              token = `${response.token_type} ${response.access_token}`;
+            }
+            validTokenButt.innerHTML = "App validated successfully. Click on Install/Save.";
+            validTokenButt.style.color = 'green';
+          })
+       .catch(err => {
+  spinnForTok.style.display = 'none';
+
+  console.log("===== FULL ERROR =====");
+  console.log("===== FULL ERROR =====");
+console.dir(err);
+console.log(err.errors);
+console.log(err.errors[0]);
+  console.log("err.response:", err.response);
+  console.log("err.status:", err.status);
+  console.log("err.message:", err.message);
+
+  try {
+    let _err = JSON.parse(err.response);
+    console.log("_err:", _err);
+
+    if (_err && _err.errors) {
+      msg = _err.errors[0]
+        ? _err.errors[0].title
+        : "OOPS issue or Invalid Credentials";
+    } else {
+      msg = "Oops issues or Invalid Credentials";
+    }
+  } catch (e) {
+    console.log("JSON Parse Error:", e);
+    msg = "Please Enter Valid Data";
+  }
+
+  validTokenButt.innerHTML = msg;
+  validTokenButt.style.color = "red";
+});
+      });
+
+    }
+
+
+
+
+
+
+
+
+
+    console.log(typeof app.initialized);
+    //****************************Role Role********************************8
+console.log("app",window.app);
+console.log("Before initialized");
+    app.initialized()
+      .then(function (_client) {
+
+        client = _client;
+
+        setTimeout(() => {
+          //Customize the properties to display
+          orderProperties = orderProperties.map(e => {
+            return {
+              key: e,
+              checked: properties.order_p.map(f => f.key).includes(e)
+            }
+          })
+          //Removed for AD
+          refreshOrderPropertiesTable();
+
+          itemProperties = itemProperties.map(e => {
+            return {
+              key: e,
+              checked: properties.item_p.map(f => f.key).includes(e)
+            }
+          })
+
+          refreshItemPropertiesTable();
+          //--PS--
+
+        }, 400);//--PS--
+
+        //end ustomize prop
+
+
+        // }, 300)
+      });
+
+    //*****************************Role above**********************************************
+
+
+
+    //***************************To set visibility of order fields for the ticekt page******
+    function refreshOrderPropertiesTable() {
+
+      let table = document.getElementById("prop-table");
+      while (table.rows.length > 1) {
+        table.deleteRow(1);
+      }
+      // console.log(table.rows);
+      for (var i = 0; i < orderProperties.length; i++) {
+        // table.deleteRow(i+1);
+        // Create an empty <tr> element and add it to the 1st position of the table:
+        var row = table.insertRow(i + 1);
+        // Insert new cells (<td> elements) at the 1st and 2nd position of the "new" <tr> element:
+        var cell1 = row.insertCell(0);
+        var cell2 = row.insertCell(1);
+
+        // var spantag = document.createElement('span');
+        // Add some text to the new cells:
+        cell1.innerHTML = orderProperties[i].key;
+
+        var cancel_t = document.createElement('fw-checkbox');
+
+        // cancel_t.setAttribute('size', 'small');
+        cancel_t.setAttribute('checked', orderProperties[i].checked);
+        // add button's "onclick" event.
+        cancel_t.setAttribute('onclick', 'propertiesFun(this,"' + orderProperties[i].key + '","order")');
+
+        cell2.appendChild(cancel_t);
+      }
+    }
+
+
+    function refreshItemPropertiesTable() {
+      let table = document.getElementById("line-prop-table");
+      while (table.rows.length > 1) {
+        table.deleteRow(1);
+      }
+      for (var i = 0; i < itemProperties.length; i++) {
+
+        // Create an empty <tr> element and add it to the 1st position of the table:
+        var row = table.insertRow(i + 1);
+        // Insert new cells (<td> elements) at the 1st and 2nd position of the "new" <tr> element:
+        var cell1 = row.insertCell(0);
+        var cell2 = row.insertCell(1);
+
+
+        // Add some text to the new cells:
+        cell1.innerHTML = itemProperties[i].key;
+        var cancel_t = document.createElement('fw-checkbox');
+
+        //cancel_t.setAttribute('size', 'small');
+        cancel_t.setAttribute('checked', itemProperties[i].checked);
+        // add button's "onclick" event.
+        cancel_t.setAttribute('onclick', 'propertiesFun(this,"' + itemProperties[i].key + '","item")');
+
+        cell2.appendChild(cancel_t);
+      }
+    }
+
+    function propertiesFun(event_, key, type) {
+
+      let obj = { key: key, name: placeHolder(key) };
+      // console.log(obj);
+      if (type == "order") {
+        let o_ind = properties.order_p.findIndex(e => e.key == key);
+        // console.log(o_ind);
+        if (o_ind == -1) {
+          if (properties.order_p.length < 4) {
+            properties.order_p.push(obj);
+          } else {
+            setTimeout(() => {
+              event_.checked = false;
+              console.log(event_.checked);
+            }, 100)
+          }
+        }
+        else {
+          properties.order_p.splice(o_ind, 1);
+        }
+      }//--PS--
+
+      else {
+        let i_ind = properties.item_p.findIndex(e => e.key == key);
+        if (i_ind == -1) {
+          if (properties.item_p.length < 4) {
+            properties.item_p.push(obj);
+          } else {
+            setTimeout(() => {
+              event_.checked = false;
+              console.log(event_.checked);
+            }, 100)
+          }
+        }
+        else {
+          properties.item_p.splice(i_ind, 1);
+        }
+      }
+      // console.log(properties.order_p);
+    }
+
+    function placeHolder(key) {
+      let str = '', ind;
+      for (var i = 0; i < key.length; i++) {
+        if (i != 0 && isUpperCase(key[i])) {
+          //before letter
+          ind = i - 1;
+          if (isUpperCase(key[ind])) {
+            str = str + key[i];
+          }
+          else {
+            str = str + ' ';
+            str = str + key[i];
+          }
+
+        } else if (i == 0) {
+          str = str + key[i].toUpperCase();
+        } else {
+          str = str + key[i];
+        }
+      }
+      return str;
+    }
+
+    function isUpperCase(char) {
+      return (char >= 'A') && (char <= 'Z');
+    }
+    //*************************end of the order fields set page**********************
+
+  </script>
+</head>
+
+<body>
+  <div class="app-config">
+
+    <div class="col-md-8">
+      <fw-tabs>
+        <fw-tab tab-header="App">
+          <!-- <div>
+          </div> -->
+          <div class="web-store">
+            <p id="invalid-cred-i" style="font-weight: bold;"></p>
+            <fw-input id="shop-name" label="Shopware Domain Name" name="domain_name" state="normal"
+              state-text="Enter Domain Name" placeholder="Ex: domain.shopware.store" required clear-input>
+            </fw-input>
+            <fw-input id="shop-client" label="Shopware Client ID" name="swdomain_name" state="normal"
+              state-text="Enter Client ID" placeholder="Ex: KJSFD483R34RUH7FU3R8U34HRF3F" required clear-input>
+            </fw-input>
+            <fw-input id="shop-cilentid" label="Shopware Client Secret ID" name="domain_name" state="normal"
+              state-text="Enter Client Secret ID" placeholder="Ex: KJSFD483R34RUH7FU3R8U34HRF3F" required clear-input>
+            </fw-input>
+            <section>
+              <fw-button size="small" onclick="validateStore()"> Validate Account </fw-button>
+              <p id="click-access-token" style="font-weight: bold; margin-top: 5px;"></p>
+              <div id="spinner-token" style="display: none;"><fw-spinner size="medium"></fw-spinner></div>
+            </section>
+
+          </div>
+
+        </fw-tab>
+
+        <fw-tab tab-header="Order Attributes Configuration" class="role-padd">
+          <!-- <div class="row role-padd"> -->
+          <div class="row" id="order-status">
+            <p id="click-access-token-app-tab" style="font-weight: bold; padding-left:20px"></p>
+            <h6>
+              <p style="color:tomato; padding-left:20px"><strong>Note: </strong>Maximum of four attributes can be
+                selected in each Item</p>
+            </h6>
+          </div>
+          <!-- Removed for AD-->
+          <div class="row">
+            <div class="col-md-6">
+              <table class="table" id="prop-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Order Properties</th>
+                    <th scope="col"></th>
+                  </tr>
+                </thead>
+                <tbody>
+
+                </tbody>
+              </table>
+            </div>
+            <div class="col-md-6">
+              <table class="table" id="line-prop-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Item Properties</th>
+                    <th scope="col"></th>
+                  </tr>
+                </thead>
+                <tbody>
+
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+
+        </fw-tab>
+
+    </div>
+    <div class="col-md-4 i-mt-12">
+      <h2 class="i-pt-12">
+        <img src="./assets/4375074-128.png" class="app-img">
+        Shopware for Freshdesk
+      </h2>
+      <p class="i-pt-12">
+        Connect single shopware store and start seeing your customers order details inside Freshdesk.
+      </p>
+      <p class="i-pt-12">
+        If you're on the older version of Freshdesk, only orders from the first store you connect will be accessible. On
+        Freshdesk Mint, you can see order details from any store when you're working on tickets.
+      </p>
+      <!-- <p class="i-pt-12"><a href="#">Learn more</a></p> -->
+    </div>
+  </div>
+
+</body>
+
+</html>

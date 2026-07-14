@@ -1,0 +1,306 @@
+$width: 270px;
+$height: 60px;
+$active: #5628EE;
+$inactive: #A8B2C9;
+$hover: #626C82;
+$background: #fff;
+
+.tabbar {
+    border-radius: 6px;
+    width: $width;
+    background: $background;
+    box-shadow: 0 4px 12px -1px rgba(#121621, .1);
+    position: relative;
+    ul {
+        margin: 16;
+        padding: 10;
+        list-style: none;
+        display: flex;
+        position: relative;
+        z-index: 1;
+        li {
+            position: relative;
+            flex-grow: 1;
+            &.active {
+                a {
+                    z-index: 5;
+                    div {
+                        span {
+                            &:last-child {
+                                width: 35px;
+                            }
+                        }
+                    }
+                }
+            }
+            a {
+                cursor: pointer;
+                display: table;
+                position: relative;
+                display: flex;
+                z-index: 1;
+                justify-content: center;
+                align-items: center;
+                height: $height;
+                -webkit-tap-highlight-color: rgba(255, 255, 255, 0);
+                div,
+                span,
+                svg {
+                    width: 30px;
+                    height: 20px;
+                    display: block;
+                    -webkit-backface-visibility: hidden;
+                }
+                div {
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    span {
+                        top: 0;
+                        left: 0;
+                        transform-origin: 50% 50%;
+                        position: absolute;
+                        overflow: hidden;
+                        z-index: 1;
+                        background: $background;
+                        &:first-child {
+                            width: 20px;
+                            svg {
+                                transition: fill .3s ease, stroke .3s ease;
+                                fill: $inactive;
+                                stroke: $inactive;
+                            }
+                        }
+                        &:last-child {
+                            width: 0;
+                            z-index: 5;
+                            transition: width .25s ease;
+                            svg {
+                                fill: $active;
+                                stroke: $active;
+                            }
+                        }
+                    }
+                }
+                &:hover {
+                    div {
+                        span {
+                            &:first-child {
+                                svg {
+                                    fill: $hover;
+                                    stroke: $hover;
+                                }
+                            }
+                        }
+                    }
+                }
+                &.toRight {
+                    div {
+                        span {
+                            &:last-child {
+                                width: 20px;
+                                transition: width .25s ease .25s;
+                                animation: pulse .3s linear forwards .35s;
+                            }
+                        }
+                    }
+                }
+                &.toLeft {
+                    div {
+                        span {
+                            &:last-child {
+                                left: auto;
+                                right: 0;
+                                width: 20px;
+                                transition: width .25s ease .25s;
+                                animation: pulse .3s linear forwards .35s;
+                                svg {
+                                    position: absolute;
+                                    top: 0;
+                                    right: 0;
+                                }
+                            }
+                        }
+                    }
+                }
+                &.removeLeft {
+                    div {
+                        span {
+                            &:last-child {
+                                width: 0;
+                                transition: width .2s ease;
+                            }
+                        }
+                    }
+                }
+                &.removeRight {
+                    div {
+                        span {
+                            &:last-child {
+                                left: auto;
+                                right: 0;
+                                width: 0;
+                                transition: width .2s ease;
+                                svg {
+                                    position: absolute;
+                                    top: 0;
+                                    right: 0;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            em {
+                --offset: 0;
+                border-radius: 50%;
+                display: block;
+                width: 6px;
+                height: 6px;
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                margin: -3px 0 0 -3px;
+                z-index: 4;
+                transition: transform .5s ease, margin .3s ease;
+                &:before {
+                    content: '';
+                    width: inherit;
+                    height: inherit;
+                    border-radius: inherit;
+                    display: block;
+                    background: $active;
+                    transform: scale(0);
+                }
+                &.move {
+                    &:before {
+                        animation: showDot .4s linear forwards;
+                    }
+                }
+                &.up {
+                    &.move {
+                        transform: translateX(var(--offset));
+                        &.multipleSteps {
+                            animation: moveTop .4s linear forwards;
+                        }
+                    }
+                }
+                &.up2 {
+                    width: 4px;
+                    height: 4px;
+                    &.move {
+                        margin-left: -8px;
+                        transform: translateX(var(--offset)) translateY(4px);
+                        &.multipleSteps {
+                            animation: moveTop .4s linear forwards;
+                        }
+                    }
+                }
+                &.up2 {
+                    width: 3px;
+                    height: 3px;
+                    &.move {
+                        margin-left: -10px;
+                        transform: translateX(var(--offset)) translateY(-2px);
+                        &.multipleSteps {
+                            animation: moveTop .4s linear forwards;
+                        }
+                    }
+                }
+                &.down {
+                    &.move {
+                        transform: translateX(var(--offset));
+                        &.multipleSteps {
+                            animation: moveDown .4s linear forwards;
+                        }
+                    }
+                }
+                &.down2 {
+                    width: 4px;
+                    height: 4px;
+                    &.move {
+                        margin-left: -10px;
+                        transform: translateX(var(--offset)) translateY(-5px);
+                        &.multipleSteps {
+                            animation: moveDown .4s linear forwards;
+                        }
+                    }
+                }
+                &.down3 {
+                    width: 3px;
+                    height: 3px;
+                    &.move {
+                        margin-left: -7px;
+                        transform: translateX(var(--offset)) translateY(3px);
+                        &.multipleSteps {
+                            animation: moveDown .4s linear forwards;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@keyframes pulse {
+    50% {
+        transform: scale(1.15);
+    }
+}
+
+@keyframes moveTop {
+    50% {
+        top: 10%;
+    }
+}
+
+@keyframes moveDown {
+    50% {
+        top: 90%;
+    }
+}
+
+@keyframes showDot {
+    50% {
+        transform: scale(1);
+    }
+    5%,
+    85% {
+        transform: scale(0);
+    }
+}
+
+html {
+    box-sizing: border-box;
+    -webkit-font-smoothing: antialiased;
+}
+
+* {
+    box-sizing: inherit;
+    &:before,
+    &:after {
+        box-sizing: inherit;
+    }
+}
+
+// Center & dribbble
+body {
+    min-height: 100vh;
+    font-family: Roboto, Arial;
+    color: #ADAFB6;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #F5F9FF;
+    .dribbble {
+        position: fixed;
+        display: block;
+        right: 20px;
+        bottom: 20px;
+        img {
+            display: block;
+            height: 28px;
+        }
+    }
+}
