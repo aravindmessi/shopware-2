@@ -106,6 +106,9 @@ function getWorkitem() {
 
       let body = {
         limit: 10,
+        associations: {
+          order: {},
+        },
         filter: [
           {
             type: "equals",
@@ -141,6 +144,14 @@ function getWorkitem() {
             res &&
             (res.statusCode === 200 || res.statusCode === 201)
           ) {
+            if (body && Array.isArray(body.data)) {
+              body.data = body.data.map((orderCustomer) => ({
+                ...orderCustomer,
+                orderNumber:
+                  orderCustomer.orderNumber ||
+                  (orderCustomer.order && orderCustomer.order.orderNumber),
+              }));
+            }
             resolve(body);
           } else {
             reject(body || err);

@@ -289,7 +289,9 @@ function getWorkitem(ticketData) {
 // }
 
 function getorderNumberItems(value) {
-  orderNumber = value;
+  let orderNumber = value;
+  console.log("Selected order:", orderNumber);
+
   if (value) {
     // window.tab_bool = false;
     document.getElementById("order-yes").style.display = "none";
@@ -303,7 +305,7 @@ function getorderNumberItems(value) {
           // data is a json object with requestID and response.
           // data.response gives the output sent as the second argument in renderData.
           console.log("[frontend] getOrderNumberItemsInvoke response", data);
-          dispalyLineItem(parseInvokeResponse(data.response));
+          displayLineItem(parseInvokeResponse(data.response));
         },
         function (err) {
           // err is a json object with requestID, status and message.
@@ -344,31 +346,26 @@ function getlineItems(resp) {
   });
 }
 
-function dispalyLineItem(resp) {
-  console.log("[frontend] dispalyLineItem entered", resp);
+function displayLineItem(resp) {
+  console.log("[frontend] displayLineItem entered", resp);
   return new Promise(function (resolve, reject) {
     getlineItems(resp)
       .then((respon) => {
         getlineItemsInCard(resp, respon);
 
-        // resp is get order
+        // show order details section
         yesOrderDet();
         resolve(respon);
 
-        //disable spin
-        document.getElementById("show-spin").style.display = "none";
+        // ✅ disable the correct spinner and show details
+        document.getElementById("show-order-spin").style.display = "none";
+        document.getElementById("order-yes").style.display = "block";
       })
       .catch((err) => {
         reject(err);
-      }); //Deliverytime
+      });
   });
 }
-// function noUserdet() {
-//   client.instance.resize({ height: "200px" });
-//   document.getElementById("user-no").style.display = "block";
-//   document.getElementById("user-yes").style.display = "none";
-//   document.getElementById("show-spin").style.display = "none";
-// }
 
 function yesOrderDet() {
   client.instance.resize({ height: "700px" });
@@ -399,6 +396,7 @@ function waitingForRes() {
   document.getElementById("user-no").style.display = "none";
   document.getElementById("invalid-cred").style.display = "none";
 }
+
 function bindOrderInDropdown(array) {
   console.log("[frontend] bindOrderInDropdown entered", array);
   console.log("array length:", array.length);
@@ -414,19 +412,33 @@ function bindOrderInDropdown(array) {
   let o_option = document.createElement("fw-select-option");
   create_o.setAttribute("id", "order_list_options");
 
-  for (const i = 0; i < array.length; i++) {
-    o_option = document.createElement("fw-select-option");
-    o_option.setAttribute("value", array[i].orderNumber);
+  const ordersWithNumbers = array.filter(
+    (orderCustomer) =>
+      orderCustomer.orderNumber ||
+      (orderCustomer.order && orderCustomer.order.orderNumber),
+  );
 
-    if (array[0].orderNumber == array[i].orderNumber) {
+  for (let i = 0; i < ordersWithNumbers.length; i++) {
+    const currentOrderNumber =
+      ordersWithNumbers[i].orderNumber ||
+      ordersWithNumbers[i].order.orderNumber;
+
+    const firstOrderNumber =
+      ordersWithNumbers[0].orderNumber ||
+      ordersWithNumbers[0].order.orderNumber;
+
+    o_option = document.createElement("fw-select-option");
+    o_option.setAttribute("value", currentOrderNumber);
+
+    if (firstOrderNumber == currentOrderNumber) {
       o_option.setAttribute("selected", "selected");
     }
 
-    o_option.innerHTML = array[i].orderNumber;
-    // console.log(o_option);
+    o_option.innerHTML = currentOrderNumber;
     create_o.appendChild(o_option);
   }
-  if (array.length === 0) {
+
+  if (ordersWithNumbers.length === 0) {
     document.getElementById("show-spin").style.display = "none";
     document.getElementById("user-no").style.display = "block";
     console.log("[frontend] bindOrderInDropdown stopped: no orders");
@@ -435,12 +447,14 @@ function bindOrderInDropdown(array) {
 
   console.log(
     "[frontend] next function: getorderNumberItems",
-    array[0].orderNumber,
+    ordersWithNumbers[0].orderNumber || ordersWithNumbers[0].order.orderNumber,
   );
 
-  getorderNumberItems(array[0].orderNumber);
+  getorderNumberItems(
+    ordersWithNumbers[0].orderNumber || ordersWithNumbers[0].order.orderNumber,
+  );
 
-  if (array.length != 0) {
+  if (ordersWithNumbers.length != 0) {
     create_o.setAttribute("placeholder", "Your orders");
     create_o.setAttribute("label", "Order Number");
 
@@ -453,44 +467,24 @@ function bindOrderInDropdown(array) {
 
 //************************card details function showing**************************
 function getlineItemsInCard(resp, respon) {
-  // document.getElementById('order-yes').style.display = 'none';
-  // document.getElementById('show-order-spin').style.display = 'block';
-  // document.getElementById('stock-yes').style.display = 'none';
-
   let item_card = document.getElementById("item_card_id");
-
   while (item_card.childNodes.length > 0) {
     item_card.removeChild(item_card.childNodes[0]);
   }
-  let spinner = document.createElement("fw-spinner");
-  spinner.setAttribute("style", "text-align:center");
-  spinner.setAttribute("color", "green");
-  item_card.appendChild(spinner);
 
-  //stock details
   let stock_orders_id = document.getElementById("stock_orders_id");
-
   while (stock_orders_id.childNodes.length > 0) {
     stock_orders_id.removeChild(stock_orders_id.childNodes[0]);
   }
-  spinner = document.createElement("fw-spinner");
-  spinner.setAttribute("style", "text-align:center");
-  spinner.setAttribute("color", "green");
-  stock_orders_id.appendChild(spinner);
-  //end stock detail
 
   document.getElementById("show-order-spin").style.display = "none";
   document.getElementById("order-yes").style.display = "block";
 
-  //Recent order
+  // ✅ Render actual data
   orderItemsCard(resp, respon);
-
-  //More order details
   bindOrderDetails(resp);
-
-  //Rma tab
-  //display customer shipping address
   displayshippingAddress(resp);
+  
 }
 
 function bindOrderDetails(order_info) {
@@ -599,18 +593,18 @@ function formFullDate(date) {
 }
 
 function orderItemsCard(resp, respon) {
-  //loop iterate for order items
+  console.log("[frontend] orderItemsCard entered", resp, respon);
 
   let item_card = document.getElementById("item_card_id");
-
   while (item_card.childNodes.length > 0) {
     item_card.removeChild(item_card.childNodes[0]);
   }
+
   let li,
     div,
     itemCardElement = [];
 
-  for (const i = 0; i < respon["data"].length; i++) {
+  for (let i = 0; i < respon["data"].length; i++) {
     itemCardElement.push(tableCardBind(respon["data"][i], true, false, resp));
   }
 
@@ -623,14 +617,12 @@ function orderItemsCard(resp, respon) {
     while (item_card.childNodes.length > 0) {
       item_card.removeChild(item_card.childNodes[0]);
     }
-    for (const i = 0; i < data.length; i++) {
+    for (let i = 0; i < data.length; i++) {
       ({ li, div } = elementCreate("li", "div"));
-
       li.setAttribute("class", "list-group-item");
       div.setAttribute("class", "padd-r-l");
       div.appendChild(data[i]);
       li.appendChild(div);
-
       item_card.appendChild(li);
     }
 
@@ -724,30 +716,41 @@ function elementCreate(...el) {
       : "",
   };
 }
+// Fetch shipping address (deliveries API) and parse JSON here
+// Fetch shipping address (deliveries API) and parse JSON here
+// Fetch shipping address (deliveries API)
+function getShippingAddress() {
+  console.log("[api] getShippingAddress entered", apiKey.credentials);
+  return new Promise(async (resolve, reject) => {
+    let token = await getToken();
 
-function getShippingAddress(resp) {
-  console.log("[frontend] getShippingAddress entered", resp);
-  return new Promise(function (resolve, reject) {
-    client.request
-      .invoke("getShippingAddressInvoke", { orderId: resp.data[0].id })
-      .then(
-        function (data) {
-          // data is a json object with requestID and response.
-          // data.response gives the output sent as the second argument in renderData.
-          let respon = JSON.parse(data.response);
-          if (respon !== "") {
-            resolve(respon);
-          } else {
-            reject(respon);
-          }
-        },
-        function (err) {
-          // err is a json object with requestID, status and message.
-          reject(err.message);
-        },
-      );
+    let headers = {
+      Authorization: token,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    };
+    let url = `https://${apiKey.credentials.iparams.SWdomain}/api/order/${apiKey.credentials.orderId}/deliveries`;
+
+    const options = {
+      method: "GET",
+      url,
+      headers,
+    };
+    console.log(`[api] request ${url}`);
+    request(options, function (err, res, body) {
+      if (!err && (res.statusCode == 200 || res.statusCode == 201)) {
+        resolve(body); // keep raw body, renderer will parse
+      } else {
+        reject(body);
+      }
+    });
   });
 }
+
+// Render shipping address section
+
+// Render shipping address section
+
 
 function tableCardBind(obj, o_name, last, resp) {
   let table = document.createElement("table"),
@@ -1086,137 +1089,94 @@ function itemCardAttr(obj, resp1, resp) {
   }
   return parentdiv;
 }
+console.log("[debug] calling getShippingAddress with:", resp);
 
 function displayshippingAddress(resp) {
+  console.log(
+    "[debug] displayshippingAddress called, resp present:",
+    !!resp,
+    "resp:",
+    resp,
+  );
+
+  // DOM existence check - only declare once here
+  const stockOrdersEl = document.getElementById("stock_orders_id");
+  console.log("[debug] stock_orders_id element:", stockOrdersEl);
+  if (!stockOrdersEl) {
+    console.error("[debug] stock_orders_id NOT found in DOM");
+    return Promise.reject(new Error("Missing container element: stock_orders_id"));
+  }
+
   client.instance.resize({ height: "500px" });
-  let stock_orders_id = document.getElementById("stock_orders_id");
-  let table = document.createElement("table"),
-    tr,
-    td;
+
+  // clear container
+  while (stockOrdersEl.firstChild) stockOrdersEl.removeChild(stockOrdersEl.firstChild);
+
   return new Promise(function (resolve, reject) {
-    getShippingAddress(resp)
+    getShippingAddress()
       .then((resp1) => {
-        while (stock_orders_id.childNodes.length > 0) {
-          stock_orders_id.removeChild(stock_orders_id.childNodes[0]);
+        console.log("[debug] getShippingAddress resolved resp1:", resp1);
+        try {
+          const dataArr = resp1 && resp1.data ? resp1.data : [];
+          if (!dataArr.length) {
+            stockOrdersEl.textContent = "No shipping information available.";
+            const spin = document.getElementById("show-order-spin");
+            if (spin) spin.style.display = "none";
+            resolve(stockOrdersEl);
+            return;
+          }
+
+          const shipping = dataArr[0].shippingOrderAddress || {};
+          const billingCountryName =
+            (dataArr[0].billingAddress &&
+              dataArr[0].billingAddress.country &&
+              dataArr[0].billingAddress.country.name) ||
+            shipping.country ||
+            "";
+
+          const table = document.createElement("table");
+          table.style.width = "100%";
+
+          function addRow(label, value) {
+            const tr = document.createElement("tr");
+            const td = document.createElement("td");
+            td.setAttribute("style", "padding: 10px 10px;");
+            td.innerHTML = `<strong>${label}:</strong> ${value || ""}`;
+            tr.appendChild(td);
+            table.appendChild(tr);
+          }
+
+          addRow("First Name", shipping.firstName);
+          addRow("Last Name", shipping.lastName);
+          addRow("Street", shipping.street);
+          addRow("Address Line 1", shipping.additionalAddressLine1 || "");
+          addRow("Address Line 2", shipping.additionalAddressLine2 || "");
+          addRow("City", shipping.city);
+          addRow("Zip Code", shipping.zipcode);
+          addRow("Country", billingCountryName);
+
+          stockOrdersEl.appendChild(table);
+
+          // hide spinner and show shipping tab
+          const spin = document.getElementById("show-order-spin");
+          if (spin) spin.style.display = "none";
+          const orderYes = document.getElementById("order-yes");
+          if (orderYes) orderYes.style.display = "block";
+          const stockYes = document.getElementById("stock-yes");
+          if (stockYes) stockYes.style.display = "block";
+
+          resolve(stockOrdersEl);
+        } catch (err) {
+          console.error("[frontend] displayshippingAddress render error", err);
+          stockOrdersEl.textContent = "Error loading shipping information.";
+          reject(err);
         }
-
-        //item name bind
-        ({ tr, td } = elementCreate("tr", "td"));
-
-        td.setAttribute("colspan", "2");
-        let table11 = document.createElement("table");
-        table11.setAttribute("style", "width:100%");
-        let tr11 = document.createElement("tr");
-
-        let td12 = document.createElement("td");
-        let table1 = document.createElement("table");
-        let tr1 = document.createElement("tr");
-        let td1 = document.createElement("td");
-        td1.setAttribute("style", "padding: 10px 10px;");
-        td1.innerHTML =
-          "First Name: " +
-          "<b>" +
-          resp1.data[0].shippingOrderAddress.firstName +
-          "</b>";
-        tr1.appendChild(td1);
-        table1.appendChild(tr1);
-        let tr2 = document.createElement("tr");
-        let td2 = document.createElement("td");
-        td2.setAttribute("style", "padding: 10px 10px;");
-        td2.innerHTML =
-          "Last Name: " +
-          "<b>" +
-          resp1.data[0].shippingOrderAddress.lastName +
-          "</b>";
-        tr2.appendChild(td2);
-        table1.appendChild(tr2);
-        let tr44 = document.createElement("tr");
-        let td44 = document.createElement("td");
-        td44.setAttribute("style", "padding: 10px 10px;");
-        td44.innerHTML =
-          "Street: " +
-          "<b>" +
-          resp1.data[0].shippingOrderAddress.street +
-          "</b>";
-        tr44.appendChild(td44);
-        table1.appendChild(tr44);
-        if (
-          resp1.data[0].shippingOrderAddress.additionalAddressLine1 !== null
-        ) {
-          let tr45 = document.createElement("tr");
-          let td45 = document.createElement("td");
-          td45.setAttribute("style", "padding: 10px 10px;");
-          td45.innerHTML =
-            "Address Line 1: " +
-            "<b>" +
-            resp1.data[0].shippingOrderAddress.additionalAddressLine1 +
-            "</b>";
-          tr45.appendChild(td45);
-          table1.appendChild(tr45);
-          let tr49 = document.createElement("tr");
-          let td49 = document.createElement("td");
-          td49.setAttribute("style", "padding: 10px 10px;");
-          td49.innerHTML =
-            "Address Line 2: " +
-            "<b>" +
-            resp1.data[0].shippingOrderAddress.additionalAddressLine2 +
-            "</b>";
-          tr49.appendChild(td49);
-          table1.appendChild(tr49);
-        } else {
-          let tr45 = document.createElement("tr");
-          let td45 = document.createElement("td");
-          td45.setAttribute("style", "padding: 10px 10px;");
-          td45.innerHTML = "Address Line 1: " + "<b>" + "" + "</b>";
-          tr45.appendChild(td45);
-          table1.appendChild(tr45);
-          let tr49 = document.createElement("tr");
-          let td49 = document.createElement("td");
-          td49.setAttribute("style", "padding: 10px 10px;");
-          td49.innerHTML = "Address Line 2: " + "<b>" + "" + "</b>";
-          tr49.appendChild(td49);
-          table1.appendChild(tr49);
-        }
-        let tr46 = document.createElement("tr");
-        let td46 = document.createElement("td");
-        td46.setAttribute("style", "padding: 10px 10px;");
-        td46.innerHTML =
-          "City: " + "<b>" + resp1.data[0].shippingOrderAddress.city + "</b>";
-        tr46.appendChild(td46);
-        table1.appendChild(tr46);
-        let tr47 = document.createElement("tr");
-        let td47 = document.createElement("td");
-        td47.setAttribute("style", "padding: 10px 10px;");
-        td47.innerHTML =
-          "Zip Code: " +
-          "<b>" +
-          resp1.data[0].shippingOrderAddress.zipcode +
-          "</b>";
-        tr47.appendChild(td47);
-        table1.appendChild(tr47);
-        let tr48 = document.createElement("tr");
-        let td48 = document.createElement("td");
-        td48.setAttribute("style", "padding: 10px 10px;");
-        td48.innerHTML =
-          "Country: " +
-          "<b>" +
-          resp.data[0].billingAddress.country.name +
-          "</b>";
-        tr48.appendChild(td48);
-        table1.appendChild(tr48);
-
-        td12.appendChild(table1);
-        tr11.appendChild(td12);
-        table11.appendChild(tr11);
-        td.appendChild(table11);
-        tr.appendChild(td);
-        table.appendChild(tr);
-
-        stock_orders_id.appendChild(table);
-
-        resolve(stock_orders_id);
       })
       .catch((err) => {
+        console.error("[frontend] getShippingAddress error", err);
+        stockOrdersEl.textContent = "Failed to fetch shipping information.";
+        const spin = document.getElementById("show-order-spin");
+        if (spin) spin.style.display = "none";
         reject(err);
       });
   });

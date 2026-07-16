@@ -37,7 +37,7 @@
   },
   "engines": {
     "node": "24.11.0",
-    "fdk": "10.1.7"
+    "fdk": "10.1.8"
   },
   "scripts": {
     "fdk-unit-test": "vitest run --coverage"
