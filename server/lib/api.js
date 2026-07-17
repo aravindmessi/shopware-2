@@ -376,4 +376,14 @@ exports = {
   getShippingAddress,
   apiKey,
   getOrderByOrderID,
+
+    proxyShippingAddressInvoke: function (payload) {
+    return new Promise((resolve, reject) => {
+      request(payload, function (err, res, body) {
+        if (err) return reject(err);
+        if (!(res.statusCode === 200 || res.statusCode === 201)) return reject(body);
+        resolve({ response: body });
+      });
+    });
+  }
 };

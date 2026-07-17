@@ -305,7 +305,7 @@ function getorderNumberItems(value) {
           // data is a json object with requestID and response.
           // data.response gives the output sent as the second argument in renderData.
           console.log("[frontend] getOrderNumberItemsInvoke response", data);
-          displayLineItem(parseInvokeResponse(data.response));
+          return displayLineItem(parseInvokeResponse(data.response));
         },
         function (err) {
           // err is a json object with requestID, status and message.
@@ -348,23 +348,25 @@ function getlineItems(resp) {
 
 function displayLineItem(resp) {
   console.log("[frontend] displayLineItem entered", resp);
-  return new Promise(function (resolve, reject) {
-    getlineItems(resp)
-      .then((respon) => {
-        getlineItemsInCard(resp, respon);
 
-        // show order details section
-        yesOrderDet();
-        resolve(respon);
+  const showLoadedSections = () => {
+    const spinner = document.getElementById("show-order-spin");
+    if (spinner) spinner.style.display = "none";
 
-        // ✅ disable the correct spinner and show details
-        document.getElementById("show-order-spin").style.display = "none";
-        document.getElementById("order-yes").style.display = "block";
-      })
-      .catch((err) => {
-        reject(err);
-      });
-  });
+    const orderYes = document.getElementById("order-yes");
+    if (orderYes) orderYes.style.display = "block";
+  };
+
+  return getlineItems(resp)
+    .then((respon) => {
+      const renderResult = getlineItemsInCard(resp, respon);
+
+      // show order details section
+      yesOrderDet();
+
+      return Promise.resolve(renderResult).then(() => respon);
+    })
+    .finally(showLoadedSections);
 }
 
 function yesOrderDet() {
@@ -477,14 +479,34 @@ function getlineItemsInCard(resp, respon) {
     stock_orders_id.removeChild(stock_orders_id.childNodes[0]);
   }
 
-  document.getElementById("show-order-spin").style.display = "none";
-  document.getElementById("order-yes").style.display = "block";
+  const showLoadedSections = () => {
+    const spinner = document.getElementById("show-order-spin");
+    if (spinner) spinner.style.display = "none";
 
-  // ✅ Render actual data
-  orderItemsCard(resp, respon);
-  bindOrderDetails(resp);
-  displayshippingAddress(resp);
-  
+    const orderYes = document.getElementById("order-yes");
+    if (orderYes) orderYes.style.display = "block";
+
+    const stockYes = document.getElementById("stock-yes");
+    if (stockYes) stockYes.style.display = "block";
+    console.log("[debug] Spinner hidden, sections shown");
+  };
+
+  try {
+    orderItemsCard(resp, respon);
+    console.log("[debug] Order items card rendered");
+    bindOrderDetails(resp);
+    console.log("[debug] Order details rendered");
+
+    return displayshippingAddress()
+      .catch((err) => {
+        console.error("[frontend] displayshippingAddress error", err);
+      })
+      .finally(showLoadedSections);
+  } catch (err) {
+    console.error("[frontend] getlineItemsInCard render error", err);
+    showLoadedSections();
+    throw err;
+  }
 }
 
 function bindOrderDetails(order_info) {
@@ -498,6 +520,8 @@ function bindOrderDetails(order_info) {
         `https://${param.SWdomain}/admin#/sw/order/detail/${order_info.data[0].id}/base`,
       );
       sw_store.setAttribute("target", "_blank");
+      console.log("[debug] Order details link bound:", sw_store.href);
+
       //bind link of order details page
 
       //bind order attribute
@@ -719,30 +743,36 @@ function elementCreate(...el) {
 // Fetch shipping address (deliveries API) and parse JSON here
 // Fetch shipping address (deliveries API) and parse JSON here
 // Fetch shipping address (deliveries API)
-function getShippingAddress() {
-  console.log("[api] getShippingAddress entered", apiKey.credentials);
-  return new Promise(async (resolve, reject) => {
-    let token = await getToken();
+function getShippingAddress(resp) {
+  console.log("[api] getShippingAddress entered");
 
-    let headers = {
-      Authorization: token,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    };
-    let url = `https://${apiKey.credentials.iparams.SWdomain}/api/order/${apiKey.credentials.orderId}/deliveries`;
+  return client.iparams.get().then((iparams) => {
+    // Call backend getToken
+    return client.request.invoke("getToken", {}).then((data) => {
+      const token = data.response?.token || data.token; // adjust based on server return
 
-    const options = {
-      method: "GET",
-      url,
-      headers,
-    };
-    console.log(`[api] request ${url}`);
-    request(options, function (err, res, body) {
-      if (!err && (res.statusCode == 200 || res.statusCode == 201)) {
-        resolve(body); // keep raw body, renderer will parse
-      } else {
-        reject(body);
-      }
+      let url = `https://${iparams.SWdomain}/api/order/${resp.data[0].id}/deliveries`;
+      console.log(`[api] request ${url}`);
+
+      // Call backend proxy to actually hit Shopware
+      return client.request.invoke("proxyShippingAddressInvoke", {
+        method: "GET",
+        url,
+        headers: {
+          Authorization: token,
+          "Content-Type": "application/json",
+          Accept: "application/json"
+        }
+      }).then((data) => {
+        try {
+          return typeof data.response === "string"
+            ? JSON.parse(data.response)
+            : data.response;
+        } catch (err) {
+          console.error("[api] parse error", err);
+          throw err;
+        }
+      });
     });
   });
 }
@@ -750,7 +780,6 @@ function getShippingAddress() {
 // Render shipping address section
 
 // Render shipping address section
-
 
 function tableCardBind(obj, o_name, last, resp) {
   let table = document.createElement("table"),
@@ -1090,96 +1119,120 @@ function itemCardAttr(obj, resp1, resp) {
   return parentdiv;
 }
 console.log("[debug] calling getShippingAddress with:", resp);
+function displayshippingAddress() {
+  console.log("[debug] displayshippingAddress called");
 
-function displayshippingAddress(resp) {
-  console.log(
-    "[debug] displayshippingAddress called, resp present:",
-    !!resp,
-    "resp:",
-    resp,
-  );
-
-  // DOM existence check - only declare once here
   const stockOrdersEl = document.getElementById("stock_orders_id");
-  console.log("[debug] stock_orders_id element:", stockOrdersEl);
+  const orderYes = document.getElementById("order-yes");
+  const stockYes = document.getElementById("stock-yes");
+  const spinner = document.getElementById("show-order-spin");
+
+  const showLoadedSections = () => {
+    if (spinner) spinner.style.display = "none";
+    if (orderYes) orderYes.style.display = "block";
+    if (stockYes) stockYes.style.display = "block";
+  };
+
   if (!stockOrdersEl) {
-    console.error("[debug] stock_orders_id NOT found in DOM");
-    return Promise.reject(new Error("Missing container element: stock_orders_id"));
+    const err = new Error("Missing container element: stock_orders_id");
+    console.error("[debug] stock_orders_id NOT found in DOM", err);
+    showLoadedSections();
+    return Promise.reject(err);
   }
 
   client.instance.resize({ height: "500px" });
 
-  // clear container
-  while (stockOrdersEl.firstChild) stockOrdersEl.removeChild(stockOrdersEl.firstChild);
+  while (stockOrdersEl.firstChild) {
+    stockOrdersEl.removeChild(stockOrdersEl.firstChild);
+  }
 
-  return new Promise(function (resolve, reject) {
-    getShippingAddress()
-      .then((resp1) => {
-        console.log("[debug] getShippingAddress resolved resp1:", resp1);
-        try {
-          const dataArr = resp1 && resp1.data ? resp1.data : [];
-          if (!dataArr.length) {
-            stockOrdersEl.textContent = "No shipping information available.";
-            const spin = document.getElementById("show-order-spin");
-            if (spin) spin.style.display = "none";
-            resolve(stockOrdersEl);
-            return;
-          }
+  const addressFields = [
+    "firstName",
+    "lastName",
+    "street",
+    "additionalAddressLine1",
+    "additionalAddressLine2",
+    "city",
+    "zipcode",
+  ];
 
-          const shipping = dataArr[0].shippingOrderAddress || {};
-          const billingCountryName =
-            (dataArr[0].billingAddress &&
-              dataArr[0].billingAddress.country &&
-              dataArr[0].billingAddress.country.name) ||
-            shipping.country ||
-            "";
+  const hasAddressValue = (address) =>
+    !!(
+      address &&
+      addressFields
+        .map((field) => address[field])
+        .concat(address.country && address.country.name, address.country)
+        .some(Boolean)
+    );
 
-          const table = document.createElement("table");
-          table.style.width = "100%";
+  const appendRow = (table, label, value) => {
+    const tr = document.createElement("tr");
+    const td = document.createElement("td");
+    const labelEl = document.createElement("strong");
 
-          function addRow(label, value) {
-            const tr = document.createElement("tr");
-            const td = document.createElement("td");
-            td.setAttribute("style", "padding: 10px 10px;");
-            td.innerHTML = `<strong>${label}:</strong> ${value || ""}`;
-            tr.appendChild(td);
-            table.appendChild(tr);
-          }
+    td.setAttribute("style", "padding: 10px 10px;");
+    labelEl.textContent = `${label}:`;
+    td.appendChild(labelEl);
+    td.appendChild(document.createTextNode(` ${value || ""}`));
+    tr.appendChild(td);
+    table.appendChild(tr);
+  };
 
-          addRow("First Name", shipping.firstName);
-          addRow("Last Name", shipping.lastName);
-          addRow("Street", shipping.street);
-          addRow("Address Line 1", shipping.additionalAddressLine1 || "");
-          addRow("Address Line 2", shipping.additionalAddressLine2 || "");
-          addRow("City", shipping.city);
-          addRow("Zip Code", shipping.zipcode);
-          addRow("Country", billingCountryName);
+  const renderAddressTable = (address, billingAddress) => {
+    const countryName =
+      (address.country && address.country.name) ||
+      address.country ||
+      (billingAddress.country && billingAddress.country.name) ||
+      billingAddress.country ||
+      "";
 
-          stockOrdersEl.appendChild(table);
+    const table = document.createElement("table");
+    table.style.width = "100%";
 
-          // hide spinner and show shipping tab
-          const spin = document.getElementById("show-order-spin");
-          if (spin) spin.style.display = "none";
-          const orderYes = document.getElementById("order-yes");
-          if (orderYes) orderYes.style.display = "block";
-          const stockYes = document.getElementById("stock-yes");
-          if (stockYes) stockYes.style.display = "block";
+    appendRow(table, "First Name", address.firstName);
+    appendRow(table, "Last Name", address.lastName);
+    appendRow(table, "Street", address.street);
+    appendRow(table, "Address Line 1", address.additionalAddressLine1 || "");
+    appendRow(table, "Address Line 2", address.additionalAddressLine2 || "");
+    appendRow(table, "City", address.city);
+    appendRow(table, "Zip Code", address.zipcode);
+    appendRow(table, "Country", countryName);
 
-          resolve(stockOrdersEl);
-        } catch (err) {
-          console.error("[frontend] displayshippingAddress render error", err);
-          stockOrdersEl.textContent = "Error loading shipping information.";
-          reject(err);
-        }
-      })
-      .catch((err) => {
-        console.error("[frontend] getShippingAddress error", err);
-        stockOrdersEl.textContent = "Failed to fetch shipping information.";
-        const spin = document.getElementById("show-order-spin");
-        if (spin) spin.style.display = "none";
-        reject(err);
-      });
-  });
+    console.log("[debug] Shipping table appended to DOM");
+
+    stockOrdersEl.appendChild(table);
+    console.log("[debug] Shipping table appended to #stock_orders_id");
+  };
+
+  return getShippingAddress()
+    .then((resp1) => {
+      console.log("[debug] getShippingAddress resolved resp1:", resp1);
+
+      const dataArr = resp1 && Array.isArray(resp1.data) ? resp1.data : [];
+      const firstDelivery = dataArr[0] || {};
+      const shippingAddress = firstDelivery.shippingOrderAddress || {};
+      const billingAddress =
+        firstDelivery.billingAddress ||
+        (firstDelivery.order && firstDelivery.order.billingAddress) ||
+        {};
+      const address = hasAddressValue(shippingAddress)
+        ? shippingAddress
+        : billingAddress;
+
+      if (hasAddressValue(address)) {
+        renderAddressTable(address, billingAddress);
+      } else {
+        stockOrdersEl.textContent = "No shipping information available.";
+      }
+
+      return stockOrdersEl;
+    })
+    .catch((err) => {
+      console.error("[frontend] getShippingAddress error", err);
+      stockOrdersEl.textContent = "Failed to fetch shipping information.";
+      return stockOrdersEl;
+    })
+    .finally(showLoadedSections);
 }
 
 function onAppActivate() {
