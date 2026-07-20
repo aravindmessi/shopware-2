@@ -282,33 +282,160 @@ function getLineItems() {
 }
 
 // Get Shipping Address
+// function getShippingAddress() {
+//   console.log("[api] getShippingAddress entered", apiKey.credentials);
+//   return new Promise(async (resolve, reject) => {
+//     let token = await getToken();
+
+//     let headers = {
+//       Authorization: token,
+//       "Content-Type": "application/json",
+//       Accept: "application/json",
+//     };
+//     let url = `https://${apiKey.credentials.iparams.SWdomain}/api/order/${apiKey.credentials.orderId}/deliveries`;
+
+//     const options = {
+//       method: "GET",
+//       url,
+//       headers,
+//     };
+//     console.log(`[api] request ${url}`);
+//     request(options, function (err, res, body) {
+//       if (!err && (res.statusCode == 200 || res.statusCode == 201)) {
+//         console.log("bodyyyyyyyy", body);
+
+//         resolve(body);
+//       } else {
+//         reject(body);
+//       }
+//     });
+//   });
+// }
 function getShippingAddress() {
   console.log("[api] getShippingAddress entered", apiKey.credentials);
   return new Promise(async (resolve, reject) => {
-    let token = await getToken();
+    try {
+      let token = await getToken();
 
-    let headers = {
-      Authorization: token,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    };
-    let url = `https://${apiKey.credentials.iparams.SWdomain}/api/order/${apiKey.credentials.orderId}/deliveries`;
+      let headers = {
+        Authorization: token,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      };
 
-    const options = {
-      method: "GET",
-      url,
-      headers,
-    };
-    console.log(`[api] request ${url}`);
-    request(options, function (err, res, body) {
-      if (!err && (res.statusCode == 200 || res.statusCode == 201)) {
-        resolve(body);
-      } else {
-        reject(body);
-      }
-    });
+      let url = `https://${apiKey.credentials.iparams.SWdomain}/api/search/order-delivery`;
+
+      let body = {
+        filter: [
+          {
+            type: "equals",
+            field: "orderId",
+            value: apiKey.credentials.orderId,
+          },
+        ],
+        associations: {
+          shippingOrderAddress: {
+            associations: { country: {} },
+          },
+          order: {
+            associations: {
+              billingAddress: {
+                associations: { country: {} },
+              },
+            },
+          },
+          stateMachineState: {},
+          shippingMethod: {},
+        },
+      };
+
+      const options = {
+        method: "POST",
+        url,
+        headers,
+        json: true,
+        body,
+      };
+
+      console.log(`[api] request ${url}`, body);
+
+      request(options, function (err, res, body) {
+        if (!err && (res.statusCode == 200 || res.statusCode == 201)) {
+          console.log("[api] getShippingAddress response", body);
+          resolve(body);
+        } else {
+          console.log("[api] getShippingAddress failed", err, body);
+          reject(body || err);
+        }
+      });
+    } catch (err) {
+      reject(err);
+    }
   });
 }
+
+// function getShippingAddress() {
+//   console.log("[api] getShippingAddress entered", apiKey.credentials);
+//   return new Promise(async (resolve, reject) => {
+//     try {
+//       let token = await getToken();
+
+//       let headers = {
+//         Authorization: token,
+//         "Content-Type": "application/json",
+//         Accept: "application/json",
+//       };
+
+//       let url = `https://${apiKey.credentials.iparams.SWdomain}/api/search/order-delivery`;
+
+//       let body = {
+//         filter: [
+//           {
+//             type: "equals",
+//             field: "orderId",
+//             value: apiKey.credentials.orderId,
+//           },
+//         ],
+//         associations: {
+//           shippingOrderAddress: {
+//             associations: { country: {} },
+//           },
+//           order: {
+//             associations: {
+//               billingAddress: {
+//                 associations: { country: {} },
+//               },
+//             },
+//           },
+//           stateMachineState: {},
+//           shippingMethod: {},
+//         },
+//       };
+
+//       const options = {
+//         method: "GET",
+//         url,
+//         headers,
+//         json: true,
+//         body,
+//       };
+
+//       console.log(`[api] request ${url}`, body);
+
+//       request(options, function (err, res, body) {
+//         if (!err && (res.statusCode == 200 || res.statusCode == 201)) {
+//           console.log("[api] getShippingAddress response", body);
+//           resolve(body);
+//         } else {
+//           console.log("[api] getShippingAddress failed", err, body);
+//           reject(body || err);
+//         }
+//       });
+//     } catch (err) {
+//       reject(err);
+//     }
+//   });
+// }
 
 function currencyFetchDetails() {
   console.log("[api] currencyFetchDetails entered", apiKey.credentials);
@@ -377,13 +504,15 @@ exports = {
   apiKey,
   getOrderByOrderID,
 
-    proxyShippingAddressInvoke: function (payload) {
+  proxyShippingAddressInvoke: function (payload) {
     return new Promise((resolve, reject) => {
       request(payload, function (err, res, body) {
+        console.log("proxyShippingAddressInvoke backend log:", payload, body);
         if (err) return reject(err);
-        if (!(res.statusCode === 200 || res.statusCode === 201)) return reject(body);
+        if (!(res.statusCode === 200 || res.statusCode === 201))
+          return reject(body);
         resolve({ response: body });
       });
     });
-  }
+  },
 };

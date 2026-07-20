@@ -11,29 +11,19 @@
       }
     }
   },
-  "generateAccessTokenInvoke": {
-    "schema": {
-      "protocol": "https",
-      "method": "GET",
-      "host": "<%= context.store_name %>",
-      "path": "/api/oauth/token",
-      "headers": {
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-      }
-    }
-  },
-
+ 
   "getWorkitem": {
     "schema": {
       "protocol": "https",
-      "method": "POST",
-      "host": "<%= context.store_name %>",
-      "path": "/api/search/order-customer",
+      "method": "GET",
+      "host": "<%= context.devops_url %>",
+      "path": "<%= context.devops_url_path %>/_apis/projects",
+      "query": {
+        "api-version": "6.0"
+      },
       "headers": {
-        "Authorization": "<%= context.authorization %>",
-        "Content-Type": "application/json",
-        "Accept": "application/json"
+        "Authorization": "<%= context.basic_auth %>",
+        "Content-Type": "application/json-patch+json"
       }
     }
   },
@@ -70,7 +60,7 @@
       }
     }
   },
-
+ 
   "currencyFetchDetails": {
     "schema": {
       "method": "GET",
@@ -105,7 +95,7 @@
       }
     }
   },
-
+ 
   "getAgent": {
     "schema": {
       "method": "GET",
@@ -118,3 +108,5 @@
     }
   }
 }
+ 
+ 

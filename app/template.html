@@ -37,48 +37,47 @@
 </head>
 <script>
 
+  // ✅ CHANGED — recent() now sets window.activeTab and delegates section visibility
+  // to the single source of truth (window.applyTabVisibility, defined in app.js)
   function recent() {
-    //console.log("HAI",tab_bool);
     mode = "recent";
-    //console.log(tab_bool);
+    window.activeTab = "home";
+
     if (window.tab_bool) {
       document.getElementById('user-no').style.display = 'block';
       document.getElementById('user-yes').style.display = 'none';
       document.getElementById('show-spin').style.display = 'none';
-      document.getElementById('stock-yes').style.display = 'none';
-      document.getElementById('rma-yes').style.display = 'none';
     }
     else {
       document.getElementById('user-yes').style.display = 'block';
-      document.getElementById('user-yes-tab').style.display = 'block';
-      //document.getElementById('past_orders').style.display = 'none';
       document.getElementById('user-no').style.display = 'none';
       document.getElementById('show-spin').style.display = 'none';
-      document.getElementById('stock-yes').style.display = 'none';
-      document.getElementById('rma-yes').style.display = 'none';
+    }
+
+    if (typeof window.applyTabVisibility === "function") {
+      window.applyTabVisibility();
     }
   }
-  
+
+  // ✅ CHANGED — stockDetails() now sets window.activeTab and delegates section visibility
+  // to the single source of truth (window.applyTabVisibility, defined in app.js).
+  // Removed the undefined 'orderNumber' reference (was causing a ReferenceError on every click).
   function stockDetails() {
     mode = "stock";
-    //console.log(tab_bool);
+    window.activeTab = "shipping";
+
     if (window.tab_bool) {
       document.getElementById('user-no').style.display = 'block';
       document.getElementById('user-yes').style.display = 'none';
       document.getElementById('show-spin').style.display = 'none';
-      document.getElementById('stock-yes').style.display = 'none';
-      document.getElementById('rma-yes').style.display = 'none';
     }
     else {
-      document.getElementById('user-yes-tab').style.display = 'none';
       document.getElementById('user-no').style.display = 'none';
       document.getElementById('show-spin').style.display = 'none';
-      document.getElementById('rma-yes').style.display = 'none';
-      if(!orderNumber){
-        document.getElementById('stock-yes').style.display = 'none';
-      }else{
-        document.getElementById('stock-yes').style.display = 'block';
-      }
+    }
+
+    if (typeof window.applyTabVisibility === "function") {
+      window.applyTabVisibility();
     }
   }
 </script>

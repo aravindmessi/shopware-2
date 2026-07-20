@@ -1,5 +1,10 @@
 window.tab_bool = false;
-const mode = "stores";
+// let mode = "stores";
+
+// ✅ CHANGED — single source of truth for tab state + cached order response
+window.activeTab = "home";        // 'home' | 'shipping'
+window.lastOrderResp = null;
+
 //Order detailed attribute
 const orderAttr = [
   "customerName",
@@ -60,32 +65,52 @@ document.onreadystatechange = function () {
   }
 };
 
+// ✅ CHANGED — new single-source-of-truth function that owns ALL section-level visibility
+function applyTabVisibility() {
+  const userYesTab = document.getElementById("user-yes-tab");
+  const stockYes = document.getElementById("stock-yes");
+  const rmaYes = document.getElementById("rma-yes");
+
+  if (window.tab_bool) {
+    if (userYesTab) userYesTab.style.display = "none";
+    if (stockYes) stockYes.style.display = "none";
+    if (rmaYes) rmaYes.style.display = "none";
+    return;
+  }
+
+  if (window.activeTab === "shipping") {
+    if (userYesTab) userYesTab.style.display = "none";
+    if (stockYes) stockYes.style.display = "block";
+    if (rmaYes) rmaYes.style.display = "none";
+
+    // idempotent re-render: if content missing when tab opens, render it now
+    const stockOrdersEl = document.getElementById("stock_orders_id");
+    if (
+      window.lastOrderResp &&
+      stockOrdersEl &&
+      stockOrdersEl.childNodes.length === 0
+    ) {
+      displayshippingAddress(window.lastOrderResp);
+    }
+  } else {
+    if (userYesTab) userYesTab.style.display = "block";
+    if (stockYes) stockYes.style.display = "none";
+    if (rmaYes) rmaYes.style.display = "none";
+  }
+}
+window.applyTabVisibility = applyTabVisibility; // exposed for template.html tab click handlers
+
 function loadAppConfig() {
   waitingForRes();
 
-  //  get the shopware url in iparam
+  const iparamsPromise = client.iparams.get();
+  const propertiesPromise = client.iparams.get("properties");
 
-  client.iparams
-    .get()
-    .then((data) => {
-      // console.log(data);
+  Promise.all([iparamsPromise, propertiesPromise])
+    .then(([data, prop]) => {
       const target = data;
 
-      loadStores(target);
-      oauthConfig();
-    })
-    .catch((err) => {
-      client.interface.trigger("showNotify", {
-        type: "danger",
-        title: "Error",
-        message: err,
-      });
-    });
-
-  //fetch
-  client.iparams
-    .get("properties")
-    .then((prop) => {
+      // ---- properties setup (guaranteed to run FIRST) ----
       window.list_out_prop = Array.isArray(prop.properties.order_p)
         ? prop.properties.order_p
         : [];
@@ -93,7 +118,6 @@ function loadAppConfig() {
       let order_p = Array.isArray(prop.properties.order_p)
         ? prop.properties.order_p.filter((e) => !orderAttr.includes(e.key))
         : [];
-
       if (order_p.length != 0) {
         orderAttr.concat(order_p.map((e) => e.key));
       }
@@ -107,10 +131,18 @@ function loadAppConfig() {
             (e) => !orderAttr.includes("OrderLine." + e.key),
           )
         : [];
-
       if (item_p.length != 0) {
         orderAttr.concat(item_p.map((e) => "OrderLine." + e.key));
       }
+
+      console.log("[frontend] properties loaded", {
+        list_out_prop: window.list_out_prop,
+        list_item_prop: window.list_item_prop,
+      });
+
+      // ---- stores + order fetch (now safe to run) ----
+      loadStores(target);
+      oauthConfig();
     })
     .catch((err) => {
       client.interface.trigger("showNotify", {
@@ -132,7 +164,6 @@ function loadStores(target) {
   }
 
   const multiple_stores = document.createElement("fw-input");
-  //const store = document.createElement('fw-tag');
   multiple_stores.setAttribute("label", "Store Name");
   multiple_stores.setAttribute("id", "Orderid");
   multiple_stores.setAttribute("readonly", "");
@@ -149,7 +180,6 @@ function oauthConfig() {
       if (data.response && data.response.Created) {
         client.data
           .get("ticket")
-
           .then(function (data_) {
             const fetchData = data_;
 
@@ -259,56 +289,25 @@ function getWorkitem(ticketData) {
     });
 }
 
-// function getOrder(res1) {
-//   let promises = [];
-//   for (let i = 0; i < res1.data.length; i++) {
-//     let promise = new Promise((resolve, reject) => {
-//       client.request
-//         .invoke("getOrderByOrderIDInvoke", { orderID: res1.data[i].orderId })
-//         .then(
-//           function (data) {
-//             // data is a json object with requestID and response.
-//             // data.response gives the output sent as the second argument in renderData.
-//             let parsedJson = JSON.parse(data.response);
-//             const res = parsedJson.data;
-//             if (res !== "") {
-//               resolve(res);
-//             } else {
-//               reject(res);
-//             }
-//           },
-//           function (err) {
-//             // err is a json object with requestID, status and message.
-//             reject(err.message);
-//           },
-//         );
-//     });
-//     promises.push(promise);
-//   }
-//   return promises;
-// }
-
 function getorderNumberItems(value) {
   let orderNumber = value;
+  window.currentOrderNumber = value; // ✅ CHANGED — expose globally for template.html
   console.log("Selected order:", orderNumber);
 
   if (value) {
-    // window.tab_bool = false;
-    document.getElementById("order-yes").style.display = "none";
+    // ✅ CHANGED — removed order-yes/stock-yes display toggles here (section visibility now centralized in applyTabVisibility)
     document.getElementById("show-order-spin").style.display = "block";
-    document.getElementById("stock-yes").style.display = "none";
 
     return client.request
       .invoke("getOrderNumberItemsInvoke", { orderNo: value })
       .then(
         function (data) {
-          // data is a json object with requestID and response.
-          // data.response gives the output sent as the second argument in renderData.
           console.log("[frontend] getOrderNumberItemsInvoke response", data);
-          return displayLineItem(parseInvokeResponse(data.response));
+          const parsed = parseInvokeResponse(data.response);
+          window.lastOrderResp = parsed; // ✅ CHANGED — cache for idempotent tab re-renders
+          return displayLineItem(parsed);
         },
         function (err) {
-          // err is a json object with requestID, status and message.
           console.log("[frontend] getOrderNumberItemsInvoke failed", err);
           document.getElementById("show-order-spin").style.display = "none";
           throw err;
@@ -316,11 +315,10 @@ function getorderNumberItems(value) {
       );
   } else {
     document.getElementById("show-spin").style.display = "none";
-    document.getElementById("order-yes").style.display = "none";
-    document.getElementById("stock-yes").style.display = "none";
-    // window.tab_bool = true;
+    // ✅ CHANGED — removed order-yes/stock-yes display toggles here
   }
 }
+
 function getlineItems(resp) {
   console.log("[frontend] getlineItems entered", resp);
   return new Promise(function (resolve, reject) {
@@ -328,8 +326,6 @@ function getlineItems(resp) {
       .invoke("getLineItemsInvoke", { orderId: resp.data[0].id })
       .then(
         function (data) {
-          // data is a json object with requestID and response.
-          // data.response gives the output sent as the second argument in renderData.
           console.log("[frontend] getLineItemsInvoke response", data);
           let respon = parseInvokeResponse(data.response);
           if (respon !== "") {
@@ -339,7 +335,6 @@ function getlineItems(resp) {
           }
         },
         function (err) {
-          // err is a json object with requestID, status and message.
           reject(err.message);
         },
       );
@@ -352,9 +347,7 @@ function displayLineItem(resp) {
   const showLoadedSections = () => {
     const spinner = document.getElementById("show-order-spin");
     if (spinner) spinner.style.display = "none";
-
-    const orderYes = document.getElementById("order-yes");
-    if (orderYes) orderYes.style.display = "block";
+    // ✅ CHANGED — removed direct orderYes display set here; yesOrderDet() below now delegates to applyTabVisibility()
   };
 
   return getlineItems(resp)
@@ -376,21 +369,12 @@ function yesOrderDet() {
   document.getElementById("user-no").style.display = "none";
   document.getElementById("show-spin").style.display = "none";
 
-  document.getElementById("order-yes").style.display = "block";
-  if (mode == "stock") {
-    document.getElementById("user-yes-tab").style.display = "none";
-    document.getElementById("stock-yes").style.display = "block";
-    document.getElementById("rma-yes").style.display = "none";
-  } else {
-    document.getElementById("user-no").style.display = "none";
-    document.getElementById("rma-yes").style.display = "none";
-    document.getElementById("stock-yes").style.display = "none";
-  }
+  // ✅ CHANGED — removed 'order-yes' direct set + 'mode' based stock-yes/user-yes-tab toggling
+  // (this was the race-condition source between async load completion and tab clicks)
+  applyTabVisibility();
 }
 
 function waitingForRes() {
-  //spin until the order open
-
   document.getElementById("show-spin").style.display = "block";
   document.getElementById("user-yes").style.display = "none";
   document.getElementById("rma-yes").style.display = "none";
@@ -483,11 +467,9 @@ function getlineItemsInCard(resp, respon) {
     const spinner = document.getElementById("show-order-spin");
     if (spinner) spinner.style.display = "none";
 
-    const orderYes = document.getElementById("order-yes");
-    if (orderYes) orderYes.style.display = "block";
+    // ✅ CHANGED — removed direct orderYes display set; now delegate to single source of truth
+    applyTabVisibility();
 
-    const stockYes = document.getElementById("stock-yes");
-    if (stockYes) stockYes.style.display = "block";
     console.log("[debug] Spinner hidden, sections shown");
   };
 
@@ -497,7 +479,7 @@ function getlineItemsInCard(resp, respon) {
     bindOrderDetails(resp);
     console.log("[debug] Order details rendered");
 
-    return displayshippingAddress()
+    return displayshippingAddress(resp)
       .catch((err) => {
         console.error("[frontend] displayshippingAddress error", err);
       })
@@ -510,7 +492,6 @@ function getlineItemsInCard(resp, respon) {
 }
 
 function bindOrderDetails(order_info) {
-  //add attr neto order link address
   client.iparams
     .get("SWdomain")
     .then((param) => {
@@ -522,9 +503,6 @@ function bindOrderDetails(order_info) {
       sw_store.setAttribute("target", "_blank");
       console.log("[debug] Order details link bound:", sw_store.href);
 
-      //bind link of order details page
-
-      //bind order attribute
       bindOrderAttr(order_info);
     })
     .catch((err) => {
@@ -582,24 +560,32 @@ function bindItemAttrValue(data1, map_prop_h, order_prop, i) {
     for (const j = 0; j < map_prop_h.length; j++) {
       div3 = document.createElement("div");
 
-      if (data2["salesChannel"][map_prop_h[j]]) {
+      if (data2["salesChannel"] && data2["salesChannel"][map_prop_h[j]]) {
         div3.innerHTML = data2["salesChannel"][map_prop_h[j]];
-      } else if (data2["billingAddress"][map_prop_h[j]]) {
+      } else if (
+        data2["billingAddress"] &&
+        data2["billingAddress"][map_prop_h[j]]
+      ) {
         div3.innerHTML = data2["billingAddress"][map_prop_h[j]];
       } else {
         div3.innerHTML = "Nil";
       }
+
       parentdiv.appendChild(div3);
     }
   } else {
-    if (data2[order_prop[i]["key"]] !== null) {
-      // console.log(order_prop[i]['key']);
+    const val = data2[order_prop[i]["key"]];
+
+    if (val !== undefined && val !== null && val !== "") {
       if (order_prop[i]["key"] === "orderDate") {
-        div3.innerHTML = formFullDate(data2[order_prop[i]["key"]]);
+        div3.innerHTML = formFullDate(val);
       } else {
-        div3.innerHTML = data2[order_prop[i]["key"]];
+        div3.innerHTML = val;
       }
-    } else if (data2["orderCustomer"][order_prop[i]["key"]]) {
+    } else if (
+      data2["orderCustomer"] &&
+      data2["orderCustomer"][order_prop[i]["key"]]
+    ) {
       div3.innerHTML = data2["orderCustomer"][order_prop[i]["key"]];
     } else {
       div3.innerHTML = "Nil";
@@ -637,33 +623,41 @@ function orderItemsCard(resp, respon) {
   spinner.setAttribute("color", "green");
   item_card.appendChild(spinner);
 
-  Promise.all(itemCardElement).then((data) => {
-    while (item_card.childNodes.length > 0) {
-      item_card.removeChild(item_card.childNodes[0]);
-    }
-    for (let i = 0; i < data.length; i++) {
+  Promise.all(itemCardElement)
+    .then((data) => {
+      while (item_card.childNodes.length > 0) {
+        item_card.removeChild(item_card.childNodes[0]);
+      }
+      for (let i = 0; i < data.length; i++) {
+        ({ li, div } = elementCreate("li", "div"));
+        li.setAttribute("class", "list-group-item");
+        div.setAttribute("class", "padd-r-l");
+        div.appendChild(data[i]);
+        li.appendChild(div);
+        item_card.appendChild(li);
+      }
+
       ({ li, div } = elementCreate("li", "div"));
       li.setAttribute("class", "list-group-item");
       div.setAttribute("class", "padd-r-l");
-      div.appendChild(data[i]);
-      li.appendChild(div);
-      item_card.appendChild(li);
-    }
 
-    ({ li, div } = elementCreate("li", "div"));
-    li.setAttribute("class", "list-group-item");
-    div.setAttribute("class", "padd-r-l");
-
-    tableCardBind(null, true, true, resp).then((endCard) => {
-      div.appendChild(endCard);
-      li.appendChild(div);
-      item_card.appendChild(li);
+      tableCardBind(null, true, true, resp).then((endCard) => {
+        div.appendChild(endCard);
+        li.appendChild(div);
+        item_card.appendChild(li);
+      });
+    })
+    .catch((err) => {
+      // ✅ CHANGED — added catch so a rejected card doesn't hang the whole list forever
+      console.error("[frontend] orderItemsCard render failed", err);
+      item_card.innerHTML = "";
+      const errLi = document.createElement("li");
+      errLi.textContent = "Failed to load order items.";
+      item_card.appendChild(errLi);
     });
-  });
 }
 
 // fetch payment stauts
-
 function paymentFetchDetails(resp) {
   console.log("[frontend] paymentFetchDetails entered", resp);
   return new Promise(function (resolve, reject) {
@@ -671,8 +665,6 @@ function paymentFetchDetails(resp) {
       .invoke("paymentFetchDetailsInvoke", { orderId: resp.data[0].id })
       .then(
         function (data) {
-          // data is a json object with requestID and response.
-          // data.response gives the output sent as the second argument in renderData.
           let respon = JSON.parse(data.response);
           if (respon !== "") {
             resolve(respon);
@@ -681,7 +673,6 @@ function paymentFetchDetails(resp) {
           }
         },
         function (err) {
-          // err is a json object with requestID, status and message.
           reject(err.message);
         },
       );
@@ -696,8 +687,6 @@ function currencyFetchDetails(resp) {
       .invoke("currencyFetchDetailsInvoke", { orderId: resp.data[0].id })
       .then(
         function (data) {
-          // data is a json object with requestID and response.
-          // data.response gives the output sent as the second argument in renderData.
           let respon = JSON.parse(data.response);
           if (respon !== "") {
             resolve(respon);
@@ -706,12 +695,12 @@ function currencyFetchDetails(resp) {
           }
         },
         function (err) {
-          // err is a json object with requestID, status and message.
           reject(err.message);
         },
       );
   });
 }
+
 /**
 Item card list function bind
 **/
@@ -740,46 +729,31 @@ function elementCreate(...el) {
       : "",
   };
 }
-// Fetch shipping address (deliveries API) and parse JSON here
-// Fetch shipping address (deliveries API) and parse JSON here
-// Fetch shipping address (deliveries API)
+
 function getShippingAddress(resp) {
-  console.log("[api] getShippingAddress entered");
-
-  return client.iparams.get().then((iparams) => {
-    // Call backend getToken
-    return client.request.invoke("getToken", {}).then((data) => {
-      const token = data.response?.token || data.token; // adjust based on server return
-
-      let url = `https://${iparams.SWdomain}/api/order/${resp.data[0].id}/deliveries`;
-      console.log(`[api] request ${url}`);
-
-      // Call backend proxy to actually hit Shopware
-      return client.request.invoke("proxyShippingAddressInvoke", {
-        method: "GET",
-        url,
-        headers: {
-          Authorization: token,
-          "Content-Type": "application/json",
-          Accept: "application/json"
-        }
-      }).then((data) => {
-        try {
-          return typeof data.response === "string"
-            ? JSON.parse(data.response)
-            : data.response;
-        } catch (err) {
-          console.error("[api] parse error", err);
-          throw err;
-        }
-      });
-    });
+  console.log("[frontend] getShippingAddress entered", resp);
+  return new Promise(function (resolve, reject) {
+    client.request
+      .invoke("getShippingAddressInvoke", { orderId: resp.data[0].id })
+      .then(
+        function (data) {
+          let respon =
+            typeof data.response === "string"
+              ? JSON.parse(data.response)
+              : data.response;
+          if (respon !== "") {
+            resolve(respon);
+          } else {
+            reject(respon);
+          }
+        },
+        function (err) {
+          console.error("[frontend] getShippingAddressInvoke failed", err);
+          reject(err.message || err);
+        },
+      );
   });
 }
-
-// Render shipping address section
-
-// Render shipping address section
 
 function tableCardBind(obj, o_name, last, resp) {
   let table = document.createElement("table"),
@@ -788,15 +762,14 @@ function tableCardBind(obj, o_name, last, resp) {
     td,
     b;
   if (!last) {
-    //Image
     return new Promise(function (resolve, reject) {
       currencyFetchDetails(resp)
         .then((response) => {
-          //Deliverytime
+          console.log("getShippingAddress", resp);
+
           getShippingAddress(resp)
             .then((resp1) => {
               if (obj) {
-                //item name bind
                 ({ tr, td } = elementCreate("tr", "td"));
 
                 td.setAttribute("colspan", "2");
@@ -841,14 +814,11 @@ function tableCardBind(obj, o_name, last, resp) {
 
               td.setAttribute("colspan", "2");
 
-              //Inside table data
               let item_card_attr = itemCardAttr(obj, resp1, resp);
               td.appendChild(item_card_attr);
               tr.appendChild(td);
               table.appendChild(tr);
 
-              //item price bind and with action
-              //item name bind
               ({ tr, td, b } = elementCreate("tr", "td", "b"));
               td.setAttribute("class", "table-td");
               td.setAttribute("style", "width:40%");
@@ -857,7 +827,7 @@ function tableCardBind(obj, o_name, last, resp) {
                   2,
                 ) +
                 " " +
-                response.data[0].shortName; //window.currency_type;
+                response.data[0].shortName;
               td.appendChild(b);
               tr.appendChild(td);
 
@@ -906,17 +876,16 @@ function tableCardBind(obj, o_name, last, resp) {
             })
             .catch((err) => {
               reject(err);
-            }); //Deliverytime
+            });
         })
         .catch((err) => {
           reject(err);
-        }); //currency URL
+        });
     });
   } else {
     return new Promise(function (resolve) {
       currencyFetchDetails(resp)
         .then((response) => {
-          //Deliverytime
           getShippingAddress(resp)
             .then((resp1) => {
               paymentFetchDetails(resp)
@@ -941,7 +910,6 @@ function tableCardBind(obj, o_name, last, resp) {
                     let fwlabel;
                     ({ td, fwlabel } = elementCreate("td", "fwlabel"));
                     td.setAttribute("class", "text-align-end table-td");
-                    // td.setAttribute('style','padding: 10px 0px;');
                     fwlabel.setAttribute("color", "blue");
                     fwlabel.setAttribute(
                       "value",
@@ -960,10 +928,8 @@ function tableCardBind(obj, o_name, last, resp) {
                     "b",
                   ));
                   h6.setAttribute("style", "margin-top:1px");
-                  //h6.innerHTML = 'Total';
                   b.innerHTML = "Payment Status";
                   h5.appendChild(b);
-                  // td.appendChild(h6);
                   td.appendChild(h5);
                   tr.appendChild(td);
 
@@ -1010,15 +976,15 @@ function tableCardBind(obj, o_name, last, resp) {
                 })
                 .catch((err) => {
                   reject(err);
-                }); //payamntdetail
+                });
             })
             .catch((err) => {
               reject(err);
-            }); //Deliverytime
+            });
         })
         .catch((err) => {
           reject(err);
-        }); //currency URL
+        });
     });
   }
 }
@@ -1026,12 +992,13 @@ function tableCardBind(obj, o_name, last, resp) {
 window.Tracking_dispatched = function (val) {
   window.open(val, "_blank");
 };
+
 function itemCardAttr(obj, resp1, resp) {
   const data4 = resp.data[0].deliveries[0];
   const data5 = resp.data[0].salesChannel;
-  //iterate object attr
+
   let parentdiv = document.createElement("div"),
-    div2; //, div3;
+    div2;
 
   let item_prop = window.list_item_prop ? window.list_item_prop : [];
 
@@ -1118,19 +1085,14 @@ function itemCardAttr(obj, resp1, resp) {
   }
   return parentdiv;
 }
-console.log("[debug] calling getShippingAddress with:", resp);
-function displayshippingAddress() {
-  console.log("[debug] displayshippingAddress called");
 
+function displayshippingAddress(resp) {
   const stockOrdersEl = document.getElementById("stock_orders_id");
-  const orderYes = document.getElementById("order-yes");
-  const stockYes = document.getElementById("stock-yes");
   const spinner = document.getElementById("show-order-spin");
 
   const showLoadedSections = () => {
     if (spinner) spinner.style.display = "none";
-    if (orderYes) orderYes.style.display = "block";
-    if (stockYes) stockYes.style.display = "block";
+    // ✅ CHANGED — removed orderYes/stockYes display sets here; section visibility now owned solely by applyTabVisibility()
   };
 
   if (!stockOrdersEl) {
@@ -1138,6 +1100,16 @@ function displayshippingAddress() {
     console.error("[debug] stock_orders_id NOT found in DOM", err);
     showLoadedSections();
     return Promise.reject(err);
+  }
+
+  if (!resp || !resp.data || !resp.data[0]) {
+    console.error(
+      "[debug] displayshippingAddress called without a valid order response",
+      resp,
+    );
+    stockOrdersEl.textContent = "No order data available for shipping lookup.";
+    showLoadedSections();
+    return Promise.resolve(stockOrdersEl);
   }
 
   client.instance.resize({ height: "500px" });
@@ -1169,7 +1141,6 @@ function displayshippingAddress() {
     const tr = document.createElement("tr");
     const td = document.createElement("td");
     const labelEl = document.createElement("strong");
-
     td.setAttribute("style", "padding: 10px 10px;");
     labelEl.textContent = `${label}:`;
     td.appendChild(labelEl);
@@ -1188,7 +1159,6 @@ function displayshippingAddress() {
 
     const table = document.createElement("table");
     table.style.width = "100%";
-
     appendRow(table, "First Name", address.firstName);
     appendRow(table, "Last Name", address.lastName);
     appendRow(table, "Street", address.street);
@@ -1198,16 +1168,16 @@ function displayshippingAddress() {
     appendRow(table, "Zip Code", address.zipcode);
     appendRow(table, "Country", countryName);
 
-    console.log("[debug] Shipping table appended to DOM");
-
     stockOrdersEl.appendChild(table);
     console.log("[debug] Shipping table appended to #stock_orders_id");
   };
 
-  return getShippingAddress()
+  return getShippingAddress(resp)
     .then((resp1) => {
-      console.log("[debug] getShippingAddress resolved resp1:", resp1);
-
+      console.log(
+        "[debug] getShippingAddress resolved:",
+        JSON.stringify(resp1, null, 2),
+      );
       const dataArr = resp1 && Array.isArray(resp1.data) ? resp1.data : [];
       const firstDelivery = dataArr[0] || {};
       const shippingAddress = firstDelivery.shippingOrderAddress || {};
@@ -1218,13 +1188,20 @@ function displayshippingAddress() {
       const address = hasAddressValue(shippingAddress)
         ? shippingAddress
         : billingAddress;
+      console.log("dataArray", dataArr);
+      console.log("shippingAddress:", firstDelivery.shippingOrderAddress);
+      console.log("billingAddress:", billingAddress);
+      console.log(
+        "has shipping:",
+        hasAddressValue(firstDelivery.shippingOrderAddress),
+      );
+      console.log("address", address);
 
       if (hasAddressValue(address)) {
         renderAddressTable(address, billingAddress);
       } else {
         stockOrdersEl.textContent = "No shipping information available.";
       }
-
       return stockOrdersEl;
     })
     .catch((err) => {
@@ -1237,6 +1214,7 @@ function displayshippingAddress() {
 
 function onAppActivate() {
   const textElement = document.getElementById("apptext");
+  if (!textElement) return; // ✅ CHANGED — guard: this ID doesn't exist in template.html, avoid throwing
   const getContact = client.data.get("contact");
   getContact.then(showContact).catch(handleErr);
 

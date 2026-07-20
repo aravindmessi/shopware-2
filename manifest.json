@@ -6,6 +6,7 @@
   "modules": {
     "common": {
       "requests": {
+      
         "generateAccessToken": {},
         "getWorkitem": {},
         "getLineItems": {},
@@ -16,6 +17,8 @@
         "getShippingAddress": {}
       },
       "functions": {
+        
+
         "generateAccessTokenInvoke": {},
         "getWorkitemInvoke": {},
         "getLineItemsInvoke": {},
